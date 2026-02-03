@@ -1,0 +1,350 @@
+// Prisma Schema for Sports Facility Booking SaaS
+// This is the single source of truth for all database types
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  SUPER_ADMIN
+  OWNER
+  STAFF
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum FacilityStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum CourtStatus {
+  ACTIVE
+  MAINTENANCE
+  INACTIVE
+}
+
+enum SportType {
+  SOCCER
+  PADEL
+  TENNIS
+  MULTI
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  DUE_SOON
+  OVERDUE
+  SUSPENDED
+  CANCELLED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum BookingStatus {
+  AVAILABLE    // Slot is free (used for virtual slots, not stored bookings)
+  RESERVED     // Customer started booking, awaiting payment
+  PAID         // Deposit received
+  CONFIRMED    // Customer confirmed attendance (morning message)
+  COMPLETED    // Session happened
+  CANCELLED    // Booking was cancelled
+  NO_SHOW      // Customer didn't show up
+}
+
+// ============================================
+// CORE MODELS
+// ============================================
+
+/// Tenant represents one sports facility business.
+/// Each facility owner who subscribes is a tenant.
+/// All their data is isolated from other tenants.
+model Tenant {
+  id           String       @id @default(cuid())
+  businessName String       @map("business_name")
+  slug         String       @unique
+  status       TenantStatus @default(ACTIVE)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  users          User[]
+  facilities     Facility[]
+  courts         Court[]
+  subscriptions  Subscription[]
+  operatingHours OperatingHours[]
+  specialHours   SpecialHours[]
+  bookings       Booking[]
+
+  @@map("tenants")
+}
+
+/// User is anyone who can log into the web dashboard.
+/// Includes Super Admin, Facility Owners, and Staff.
+/// Customers are NOT users - they only interact via WhatsApp.
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  fullName     String    @map("full_name")
+  phone        String?
+  role         UserRole
+  tenantId     String?   @map("tenant_id")
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  tenant          Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBookings Booking[]
+
+  @@index([tenantId])
+  @@index([email])
+  @@map("users")
+}
+
+/// Facility is a sports venue (soccer field complex, padel club, tennis club).
+/// One tenant can have one facility in MVP (could expand later).
+model Facility {
+  id                    String         @id @default(cuid())
+  tenantId              String         @map("tenant_id")
+  name                  String
+  address               String
+  city                  String
+  country               String
+  phone                 String
+  email                 String
+  timezone              String         @default("America/Argentina/Buenos_Aires")
+  currencyCode          String         @default("ARS") @map("currency_code")
+  depositPercentage     Int            @default(50) @map("deposit_percentage")
+  cancellationHours     Int            @default(24) @map("cancellation_hours")
+  minBookingNoticeHours Int            @default(2) @map("min_booking_notice_hours")
+  maxBookingAdvanceDays Int            @default(30) @map("max_booking_advance_days")
+  bufferMinutes         Int            @default(0) @map("buffer_minutes")
+  sessionDurationMinutes Int[]         @default([60, 90]) @map("session_duration_minutes")
+  whatsappPhone         String?        @map("whatsapp_phone")
+  whatsappApiKey        String?        @map("whatsapp_api_key")
+  whatsappApiSecret     String?        @map("whatsapp_api_secret")
+  whatsappWebhookToken  String?        @map("whatsapp_webhook_token")
+  mercadopagoAccessToken String?       @map("mercadopago_access_token")
+  mercadopagoPublicKey  String?        @map("mercadopago_public_key")
+  geminiApiKey          String?        @map("gemini_api_key")
+  whisperApiKey         String?        @map("whisper_api_key")
+  status                FacilityStatus @default(ACTIVE)
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  courts         Court[]
+  operatingHours OperatingHours[]
+  specialHours   SpecialHours[]
+  bookings       Booking[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("facilities")
+}
+
+/// Court (or field) is a bookable unit within a facility.
+/// A soccer complex might have 3 fields. A padel club might have 5 courts.
+model Court {
+  id            String      @id @default(cuid())
+  tenantId      String      @map("tenant_id")
+  facilityId    String      @map("facility_id")
+  name          String
+  sportType     SportType   @default(SOCCER) @map("sport_type")
+  description   String?
+  surfaceType   String?     @map("surface_type")
+  isIndoor      Boolean     @default(false) @map("is_indoor")
+  basePricePerHour Decimal  @map("base_price_per_hour") @db.Decimal(10, 2)
+  status        CourtStatus @default(ACTIVE)
+  displayOrder  Int         @default(0) @map("display_order")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  facility Facility  @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@index([tenantId])
+  @@index([facilityId])
+  @@index([status])
+  @@map("courts")
+}
+
+/// Subscription tracks the billing status of each tenant.
+/// Handles payment due dates, status transitions, and auto-suspension.
+model Subscription {
+  id                 String             @id @default(cuid())
+  tenantId           String             @map("tenant_id")
+  planName           String             @default("Standard") @map("plan_name")
+  priceAmount        Decimal            @map("price_amount") @db.Decimal(10, 2)
+  currency           String             @default("ARS")
+  billingCycle       BillingCycle       @default(MONTHLY) @map("billing_cycle")
+  currentPeriodStart DateTime           @map("current_period_start")
+  currentPeriodEnd   DateTime           @map("current_period_end")
+  status             SubscriptionStatus @default(ACTIVE)
+  nextPaymentDate    DateTime           @map("next_payment_date")
+  lastPaymentDate    DateTime?          @map("last_payment_date")
+  lastPaymentAmount  Decimal?           @map("last_payment_amount") @db.Decimal(10, 2)
+  dueSoonDays        Int                @default(5) @map("due_soon_days")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([nextPaymentDate])
+  @@map("subscriptions")
+}
+
+// ============================================
+// OPERATING HOURS MODELS
+// ============================================
+
+/// OperatingHours defines the weekly schedule for a facility.
+/// Each day of the week (0-6, Sunday-Saturday) has its own record.
+model OperatingHours {
+  id                     String   @id @default(cuid())
+  tenantId               String   @map("tenant_id")
+  facilityId             String   @map("facility_id")
+  dayOfWeek              Int      @map("day_of_week") // 0 = Sunday, 6 = Saturday
+  openTime               String   @map("open_time") // Format: "HH:mm" e.g., "08:00"
+  closeTime              String   @map("close_time") // Format: "HH:mm" e.g., "23:00"
+  isClosed               Boolean  @default(false) @map("is_closed")
+  sessionDurationMinutes Int      @default(60) @map("session_duration_minutes") // 60 or 90 typical
+  bufferMinutes          Int      @default(0) @map("buffer_minutes") // 0, 10, 15, 30
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  facility Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+
+  @@unique([facilityId, dayOfWeek])
+  @@index([tenantId])
+  @@index([facilityId])
+  @@map("operating_hours")
+}
+
+/// SpecialHours defines exceptions to the regular schedule.
+/// Used for holidays, special closures, or modified hours on specific dates.
+model SpecialHours {
+  id         String    @id @default(cuid())
+  tenantId   String    @map("tenant_id")
+  facilityId String    @map("facility_id")
+  date       DateTime  @db.Date // The specific date for this exception
+  openTime   String?   @map("open_time") // Null if closed
+  closeTime  String?   @map("close_time") // Null if closed
+  isClosed   Boolean   @default(true) @map("is_closed")
+  reason     String? // e.g., "Feriado", "Mantenimiento", "Vacaciones"
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  facility Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+
+  @@unique([facilityId, date])
+  @@index([tenantId])
+  @@index([facilityId])
+  @@index([date])
+  @@map("special_hours")
+}
+
+// ============================================
+// BOOKING MODELS
+// ============================================
+
+/// Booking represents a reservation for a court/field.
+/// Contains all booking details including payment status and customer info.
+model Booking {
+  id                 String        @id @default(cuid())
+  tenantId           String        @map("tenant_id")
+  facilityId         String        @map("facility_id")
+  courtId            String        @map("court_id")
+
+  // Date and time
+  date               DateTime      @db.Date
+  startTime          String        @map("start_time") // Format: "HH:mm"
+  endTime            String        @map("end_time")   // Format: "HH:mm"
+  durationMinutes    Int           @map("duration_minutes")
+
+  // Status
+  status             BookingStatus @default(RESERVED)
+
+  // Customer info (inline until Customer model is added in Phase 5)
+  customerName       String        @map("customer_name")
+  customerPhone      String        @map("customer_phone")
+  customerEmail      String?       @map("customer_email")
+
+  // Pricing
+  totalPrice         Decimal       @map("total_price") @db.Decimal(10, 2)
+  depositAmount      Decimal       @map("deposit_amount") @db.Decimal(10, 2)
+  depositPaid        Boolean       @default(false) @map("deposit_paid")
+  depositPaidAt      DateTime?     @map("deposit_paid_at")
+  balanceAmount      Decimal       @map("balance_amount") @db.Decimal(10, 2)
+  balancePaid        Boolean       @default(false) @map("balance_paid")
+  balancePaidAt      DateTime?     @map("balance_paid_at")
+
+  // Payment reference (will link to Payment model in Phase 6)
+  paymentId          String?       @map("payment_id")
+
+  // Cancellation
+  cancelledAt        DateTime?     @map("cancelled_at")
+  cancellationReason String?       @map("cancellation_reason")
+
+  // No-show
+  noShowMarkedAt     DateTime?     @map("no_show_marked_at")
+
+  // Confirmation (from morning message)
+  confirmedAt        DateTime?     @map("confirmed_at")
+
+  // Notes
+  notes              String?
+
+  // Slot locking for race condition prevention
+  lockToken          String?       @map("lock_token")
+  lockExpiresAt      DateTime?     @map("lock_expires_at")
+
+  // Audit fields
+  createdById        String?       @map("created_by_id")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  tenant             Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  facility           Facility      @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  court              Court         @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  createdBy          User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([facilityId])
+  @@index([courtId])
+  @@index([date])
+  @@index([status])
+  @@index([customerPhone])
+  @@index([lockToken])
+  @@map("bookings")
+}

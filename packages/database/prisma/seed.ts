@@ -7,13 +7,13 @@ async function main() {
   console.log('Seeding database...');
 
   // Create Super Admin user (Santiago)
-  const superAdminPassword = await bcrypt.hash('SuperAdmin123!', 10);
+  const defaultPassword = await bcrypt.hash('password123!', 10);
   const superAdmin = await prisma.user.upsert({
     where: { email: 'admin@sportsbook.com' },
-    update: {},
+    update: { passwordHash: defaultPassword },
     create: {
       email: 'admin@sportsbook.com',
-      passwordHash: superAdminPassword,
+      passwordHash: defaultPassword,
       fullName: 'Santiago Admin',
       phone: '+54 9 11 1234-5678',
       role: UserRole.SUPER_ADMIN,
@@ -35,13 +35,12 @@ async function main() {
   console.log(`Created Tenant: ${tenant.businessName}`);
 
   // Create facility owner for the tenant
-  const ownerPassword = await bcrypt.hash('Owner123!', 10);
   const owner = await prisma.user.upsert({
     where: { email: 'owner@canchasamigos.com' },
-    update: {},
+    update: { passwordHash: defaultPassword },
     create: {
       email: 'owner@canchasamigos.com',
-      passwordHash: ownerPassword,
+      passwordHash: defaultPassword,
       fullName: 'Juan Perez',
       phone: '+54 9 11 9876-5432',
       role: UserRole.OWNER,
@@ -133,13 +132,12 @@ async function main() {
   console.log(`Created ${courts.length} courts`);
 
   // Create a staff member
-  const staffPassword = await bcrypt.hash('Staff123!', 10);
   const staff = await prisma.user.upsert({
     where: { email: 'staff@canchasamigos.com' },
-    update: {},
+    update: { passwordHash: defaultPassword },
     create: {
       email: 'staff@canchasamigos.com',
-      passwordHash: staffPassword,
+      passwordHash: defaultPassword,
       fullName: 'Maria Garcia',
       phone: '+54 9 11 5555-1234',
       role: UserRole.STAFF,

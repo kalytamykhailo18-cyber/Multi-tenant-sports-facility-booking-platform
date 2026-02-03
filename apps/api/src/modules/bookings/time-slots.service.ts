@@ -326,7 +326,7 @@ export class TimeSlotsService {
    */
   async unlockSlot(lockToken: string): Promise<{ success: boolean }> {
     const tokenKey = `${SLOT_LOCK_PREFIX}token:${lockToken}`;
-    const lockKey = await this.redisService.get(tokenKey);
+    const lockKey = await this.redisService.get<string>(tokenKey);
 
     if (!lockKey) {
       // Lock may have already expired
@@ -335,9 +335,9 @@ export class TimeSlotsService {
     }
 
     // Get lock data before deleting for socket emission
-    const lockDataStr = await this.redisService.get(lockKey);
+    const lockDataStr = await this.redisService.get<string>(lockKey);
     let lockData: { courtId: string; date: string; startTime: string } | null = null;
-    if (lockDataStr) {
+    if (lockDataStr && typeof lockDataStr === 'string') {
       try {
         lockData = JSON.parse(lockDataStr);
       } catch {
@@ -386,14 +386,14 @@ export class TimeSlotsService {
     };
   }> {
     const tokenKey = `${SLOT_LOCK_PREFIX}token:${lockToken}`;
-    const lockKey = await this.redisService.get(tokenKey);
+    const lockKey = await this.redisService.get<string>(tokenKey);
 
     if (!lockKey) {
       return { valid: false };
     }
 
-    const lockDataStr = await this.redisService.get(lockKey);
-    if (!lockDataStr) {
+    const lockDataStr = await this.redisService.get<string>(lockKey);
+    if (!lockDataStr || typeof lockDataStr !== 'string') {
       return { valid: false };
     }
 

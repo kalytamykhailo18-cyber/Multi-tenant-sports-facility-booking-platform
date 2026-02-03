@@ -71,10 +71,11 @@ function buildHeaders(customHeaders?: HeadersInit): HeadersInit {
 
 // Handle API response
 async function handleResponse<T>(response: Response): Promise<T> {
-  // Handle 401 - redirect to login
+  // Handle 401 - clear token and redirect (except if already on login page)
   if (response.status === 401) {
     clearToken();
-    if (typeof window !== 'undefined') {
+    // Only redirect if not already on login page to prevent infinite loops
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
       window.location.href = '/login';
     }
     throw new ApiError('Session expired', 'TOKEN_EXPIRED', 401);

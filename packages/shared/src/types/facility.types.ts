@@ -5,22 +5,19 @@ import type { Facility, Court, FacilityStatus, CourtStatus, SportType } from '@s
 import type { CurrencyCode } from '../utils/currency.utils';
 
 // Facility without sensitive credentials - safe for API responses
+// NOTE: Excludes encrypted fields (WhatsApp session data, Mercado Pago OAuth tokens)
 export type SafeFacility = Omit<
   Facility,
-  | 'whatsappApiKey'
-  | 'whatsappApiSecret'
-  | 'whatsappWebhookToken'
-  | 'mercadopagoAccessToken'
-  | 'mercadopagoPublicKey'
-  | 'geminiApiKey'
-  | 'whisperApiKey'
+  | 'whatsappSessionData'  // Encrypted Baileys session
+  | 'mpAccessToken'        // Encrypted MP OAuth token
+  | 'mpRefreshToken'       // Encrypted MP refresh token
 >;
 
-// Facility with credential status (indicates if configured, but not actual values)
-export interface FacilityWithCredentialStatus extends SafeFacility {
-  hasWhatsappCredentials: boolean;
-  hasMercadopagoCredentials: boolean;
-  hasAiCredentials: boolean;
+// Facility with connection status
+export interface FacilityWithConnectionStatus extends SafeFacility {
+  whatsappConnected: boolean;
+  mercadoPagoConnected: boolean;
+  aiCustomized: boolean; // Has AI customization (greeting, business info, FAQs)
 }
 
 // Create facility input
@@ -63,21 +60,19 @@ export interface UpdateFacilityInput {
   status?: FacilityStatus;
 }
 
-// Facility credential types
-export type CredentialType = 'whatsapp' | 'mercadopago' | 'gemini' | 'whisper';
-
-// Update credentials input
-export interface UpdateCredentialsInput {
-  type: CredentialType;
-  credentials: Record<string, string>;
+// AI Customization input (NOT credentials - keys are centralized in backend)
+export interface UpdateAICustomizationInput {
+  aiGreeting?: string;       // Custom greeting message for AI bot
+  aiBusinessInfo?: string;   // Business information for AI context
+  aiFaqData?: Record<string, string>; // Custom FAQs
 }
 
-// Credential test result
-export interface CredentialTestResult {
-  type: CredentialType;
-  success: boolean;
+// Connection status check result
+export interface ConnectionStatusResult {
+  connected: boolean;
+  lastSeen?: Date;
+  expiresAt?: Date;
   message: string;
-  testedAt: string;
 }
 
 // Create court input

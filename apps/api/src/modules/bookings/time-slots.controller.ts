@@ -16,15 +16,10 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { Roles } from '../../common/decorators';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { TimeSlotsService } from './time-slots.service';
-import {
-  QueryTimeSlotsDto,
-  LockSlotDto,
-  UnlockSlotDto,
-  DaySlotsResponseDto,
-  SlotLockResponseDto,
-} from './dto';
+import { QueryTimeSlotsDto, LockSlotDto, UnlockSlotDto } from './dto/query-booking.dto';
+import { DaySlotsResponseDto, SlotLockResponseDto } from './dto/booking-response.dto';
 
 @ApiTags('Time Slots')
 @ApiBearerAuth()

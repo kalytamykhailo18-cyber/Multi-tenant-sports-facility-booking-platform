@@ -5,7 +5,7 @@
 
 import { useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/protected-route';
-import { TenantList } from '@/components/tenants';
+import { TenantList } from '@/components/tenants/tenant-list';
 import type { Tenant } from '@/lib/tenants-api';
 
 export default function TenantsPage() {

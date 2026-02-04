@@ -164,16 +164,16 @@ export function getSportTypeLabel(sportType: SportType): string {
 }
 
 /**
- * Get icon emoji for sport type
+ * Get icon name for sport type (used with React Icons)
  */
-export function getSportTypeIcon(sportType: SportType): string {
-  const icons: Record<SportType, string> = {
-    SOCCER: '⚽',
-    PADEL: '🎾',
-    TENNIS: '🎾',
-    MULTI: '🏟️',
+export function getSportTypeIconName(sportType: SportType): 'soccer' | 'padel' | 'tennis' | 'multi' {
+  const icons: Record<SportType, 'soccer' | 'padel' | 'tennis' | 'multi'> = {
+    SOCCER: 'soccer',
+    PADEL: 'padel',
+    TENNIS: 'tennis',
+    MULTI: 'multi',
   };
-  return icons[sportType] || '🏟️';
+  return icons[sportType] || 'multi';
 }
 
 /**

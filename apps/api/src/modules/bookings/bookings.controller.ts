@@ -20,17 +20,12 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
-import { Roles } from '../../common/decorators';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { BookingsService } from './bookings.service';
-import {
-  CreateBookingDto,
-  UpdateBookingDto,
-  CancelBookingDto,
-  ChangeBookingStatusDto,
-  QueryBookingDto,
-  BookingResponseDto,
-  BookingListResponseDto,
-} from './dto';
+import { CreateBookingDto } from './dto/create-booking.dto';
+import { UpdateBookingDto, CancelBookingDto, ChangeBookingStatusDto } from './dto/update-booking.dto';
+import { QueryBookingDto } from './dto/query-booking.dto';
+import { BookingResponseDto, BookingListResponseDto, CancellationResultDto } from './dto/booking-response.dto';
 
 @ApiTags('Bookings')
 @ApiBearerAuth()
@@ -152,8 +147,8 @@ export class BookingsController {
   @ApiParam({ name: 'id', description: 'Booking ID' })
   @ApiResponse({
     status: 200,
-    description: 'Booking cancelled successfully',
-    type: BookingResponseDto,
+    description: 'Booking cancelled successfully. Returns cancellation result with credit info if applicable.',
+    type: CancellationResultDto,
   })
   @ApiResponse({ status: 400, description: 'Booking cannot be cancelled' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -162,7 +157,7 @@ export class BookingsController {
   async cancel(
     @Param('id') id: string,
     @Body() dto?: CancelBookingDto,
-  ): Promise<BookingResponseDto> {
+  ): Promise<CancellationResultDto> {
     return this.bookingsService.cancel(id, dto);
   }
 

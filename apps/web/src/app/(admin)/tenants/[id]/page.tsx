@@ -9,8 +9,8 @@ import { ProtectedRoute } from '@/components/auth/protected-route';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { TenantStatusBadge } from '@/components/tenants';
-import { FacilityList } from '@/components/facilities';
+import { TenantStatusBadge } from '@/components/tenants/tenant-status-badge';
+import { FacilityList } from '@/components/facilities/facility-list';
 import { useTenants } from '@/hooks/useTenants';
 import type { Facility } from '@/lib/facilities-api';
 

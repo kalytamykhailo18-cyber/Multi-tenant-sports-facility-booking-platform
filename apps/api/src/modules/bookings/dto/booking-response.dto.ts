@@ -382,3 +382,42 @@ export class SlotLockResponseDto {
   })
   durationSeconds: number;
 }
+
+// Cancellation result with credit info
+export class CancellationResultDto {
+  @ApiProperty({
+    description: 'Cancelled booking details',
+    type: BookingResponseDto,
+  })
+  booking: BookingResponseDto;
+
+  @ApiProperty({
+    description: 'Whether the deposit was converted to credit (>24 hours before)',
+    example: true,
+  })
+  depositConvertedToCredit: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Credit ID if deposit was converted to credit',
+    example: 'clx1234567890credit',
+  })
+  creditId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Credit amount if deposit was converted',
+    example: 2500.00,
+  })
+  creditAmount?: number;
+
+  @ApiProperty({
+    description: 'Whether the deposit was forfeited (<24 hours before)',
+    example: false,
+  })
+  depositForfeited: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Explanation message about the cancellation result',
+    example: 'Deposit converted to credit: $2500',
+  })
+  message?: string;
+}

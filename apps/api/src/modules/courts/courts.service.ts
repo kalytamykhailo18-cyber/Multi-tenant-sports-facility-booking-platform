@@ -8,19 +8,15 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma';
-import { TenantContextService } from '../../common/tenant';
-import { AuditService, AuditEventType, AuditEventCategory } from '../../common/audit';
-import { WsGateway } from '../../common/gateway';
-import {
-  CreateCourtDto,
-  UpdateCourtDto,
-  UpdateCourtStatusDto,
-  ReorderCourtsDto,
-  QueryCourtDto,
-  CourtResponseDto,
-  CourtListResponseDto,
-} from './dto';
+import { PrismaService } from '../../prisma/prisma.service';
+import { TenantContextService } from '../../common/tenant/tenant-context.service';
+import { AuditService } from '../../common/audit/audit.service';
+import { AuditEventType, AuditEventCategory } from '../../common/audit/audit.types';
+import { WsGateway } from '../../common/gateway/ws.gateway';
+import { CreateCourtDto } from './dto/create-court.dto';
+import { UpdateCourtDto, UpdateCourtStatusDto, ReorderCourtsDto } from './dto/update-court.dto';
+import { QueryCourtDto } from './dto/query-court.dto';
+import { CourtResponseDto, CourtListResponseDto } from './dto/court-response.dto';
 import { Court, CourtStatus, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 

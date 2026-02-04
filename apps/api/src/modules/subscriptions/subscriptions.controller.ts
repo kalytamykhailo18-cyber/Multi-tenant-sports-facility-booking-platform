@@ -19,15 +19,12 @@ import {
   ApiBearerAuth,
   ApiParam,
 } from '@nestjs/swagger';
-import { Roles } from '../../common/decorators';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { SubscriptionsService } from './subscriptions.service';
-import {
-  CreateSubscriptionDto,
-  UpdateSubscriptionDto,
-  QuerySubscriptionDto,
-  SubscriptionResponseDto,
-  SubscriptionListResponseDto,
-} from './dto';
+import { CreateSubscriptionDto } from './dto/create-subscription.dto';
+import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
+import { QuerySubscriptionDto } from './dto/query-subscription.dto';
+import { SubscriptionResponseDto, SubscriptionListResponseDto } from './dto/subscription-response.dto';
 
 @ApiTags('Subscriptions')
 @ApiBearerAuth()
@@ -196,6 +193,33 @@ export class SubscriptionsController {
     @Body() body: { reason?: string },
   ): Promise<SubscriptionResponseDto> {
     return this.subscriptionsService.cancel(id, body.reason);
+  }
+
+  /**
+   * Generate payment link for subscription renewal
+   */
+  @Post('tenant/:tenantId/payment-link')
+  @Roles('OWNER', 'SUPER_ADMIN')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Generate Mercado Pago payment link for subscription renewal' })
+  @ApiParam({ name: 'tenantId', description: 'Tenant ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Payment link generated successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        paymentLink: { type: 'string' },
+        preferenceId: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Subscription not found' })
+  async generatePaymentLink(
+    @Param('tenantId') tenantId: string,
+  ): Promise<{ paymentLink: string; preferenceId: string }> {
+    return this.subscriptionsService.generateSubscriptionPaymentLink(tenantId);
   }
 
   /**

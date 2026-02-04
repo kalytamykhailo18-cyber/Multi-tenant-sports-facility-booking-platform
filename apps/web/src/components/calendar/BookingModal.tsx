@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
+import { PaymentLinkSection } from '@/components/payments/payment-link-section';
 import {
   type Booking,
   type TimeSlot,
@@ -31,8 +32,10 @@ import {
   useBookingQuickActions,
   useSlotLock,
 } from '@/hooks/useBookings';
+import { AiOutlineUser, AiOutlineCreditCard } from 'react-icons/ai';
 
 type ModalMode = 'view' | 'create' | 'edit';
+type ViewTab = 'details' | 'payments';
 
 interface BookingModalProps {
   open: boolean;
@@ -104,6 +107,7 @@ export function BookingModal({
   const [cancellationReason, setCancellationReason] = useState('');
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
+  const [activeTab, setActiveTab] = useState<ViewTab>('details');
 
   // Initialize form data when modal opens
   useEffect(() => {
@@ -127,6 +131,7 @@ export function BookingModal({
       setErrors({});
       setShowCancelDialog(false);
       setCancellationReason('');
+      setActiveTab('details');
     }
   }, [open, mode, booking, slot]);
 
@@ -392,99 +397,159 @@ export function BookingModal({
           </div>
         )}
 
-        {/* View mode - customer details */}
+        {/* View mode - customer details and payments */}
         {mode === 'view' && booking && (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-muted-foreground">Cliente</Label>
-                <p className="font-medium">{booking.customerName}</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Teléfono</Label>
-                <p className="font-medium">{booking.customerPhone}</p>
-              </div>
-              {booking.customerEmail && (
-                <div>
-                  <Label className="text-muted-foreground">Email</Label>
-                  <p className="font-medium">{booking.customerEmail}</p>
-                </div>
-              )}
-              {booking.notes && (
-                <div className="md:col-span-2">
-                  <Label className="text-muted-foreground">Notas</Label>
-                  <p className="font-medium">{booking.notes}</p>
-                </div>
-              )}
+            {/* Tab buttons */}
+            <div className="flex border-b">
+              <button
+                type="button"
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'details'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+                onClick={() => setActiveTab('details')}
+              >
+                <AiOutlineUser className="w-4 h-4" />
+                Detalles
+              </button>
+              <button
+                type="button"
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'payments'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+                onClick={() => setActiveTab('payments')}
+              >
+                <AiOutlineCreditCard className="w-4 h-4" />
+                Pagos
+                {(!booking.depositPaid || !booking.balancePaid) && (
+                  <span className="ml-1 w-2 h-2 rounded-full bg-yellow-500" />
+                )}
+              </button>
             </div>
 
-            {/* Payment info */}
-            <div className="p-4 bg-muted rounded-lg">
-              <Label className="mb-2 block text-muted-foreground">Información de pago</Label>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Total:</span>
-                  <p className="font-medium">{formatPrice(booking.totalPrice, currencyCode)}</p>
+            {/* Details tab */}
+            {activeTab === 'details' && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Cliente</Label>
+                    <p className="font-medium">{booking.customerName}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Teléfono</Label>
+                    <p className="font-medium">{booking.customerPhone}</p>
+                  </div>
+                  {booking.customerEmail && (
+                    <div>
+                      <Label className="text-muted-foreground">Email</Label>
+                      <p className="font-medium">{booking.customerEmail}</p>
+                    </div>
+                  )}
+                  {booking.notes && (
+                    <div className="md:col-span-2">
+                      <Label className="text-muted-foreground">Notas</Label>
+                      <p className="font-medium">{booking.notes}</p>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Seña:</span>
-                  <p className="font-medium">
-                    {formatPrice(booking.depositAmount, currencyCode)}
-                    <span className={booking.depositPaid ? 'text-green-600 ml-1' : 'text-yellow-600 ml-1'}>
-                      ({booking.depositPaid ? 'Pagada' : 'Pendiente'})
-                    </span>
-                  </p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Saldo:</span>
-                  <p className="font-medium">
-                    {formatPrice(booking.balanceAmount, currencyCode)}
-                    <span className={booking.balancePaid ? 'text-green-600 ml-1' : 'text-yellow-600 ml-1'}>
-                      ({booking.balancePaid ? 'Pagado' : 'Pendiente'})
-                    </span>
-                  </p>
-                </div>
-              </div>
-            </div>
 
-            {/* Quick actions for view mode */}
-            {(canCompleteBooking(booking) || canMarkNoShow(booking)) && (
-              <div className="flex flex-wrap gap-2">
-                {booking.status === 'PAID' && onConfirm && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onConfirm}
-                    disabled={isLoading}
-                  >
-                    {isUpdating ? <Spinner className="w-4 h-4 mr-2" /> : null}
-                    Marcar confirmado
-                  </Button>
+                {/* Payment summary */}
+                <div className="p-4 bg-muted rounded-lg">
+                  <Label className="mb-2 block text-muted-foreground">Resumen de pago</Label>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Total:</span>
+                      <p className="font-medium">{formatPrice(booking.totalPrice, currencyCode)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Seña:</span>
+                      <p className="font-medium">
+                        {formatPrice(booking.depositAmount, currencyCode)}
+                        <span className={booking.depositPaid ? 'text-green-600 ml-1' : 'text-yellow-600 ml-1'}>
+                          ({booking.depositPaid ? 'Pagada' : 'Pendiente'})
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Saldo:</span>
+                      <p className="font-medium">
+                        {formatPrice(booking.balanceAmount, currencyCode)}
+                        <span className={booking.balancePaid ? 'text-green-600 ml-1' : 'text-yellow-600 ml-1'}>
+                          ({booking.balancePaid ? 'Pagado' : 'Pendiente'})
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                  {(!booking.depositPaid || !booking.balancePaid) && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="mt-2 h-auto p-0"
+                      onClick={() => setActiveTab('payments')}
+                    >
+                      Gestionar pagos
+                    </Button>
+                  )}
+                </div>
+
+                {/* Quick actions for view mode */}
+                {(canCompleteBooking(booking) || canMarkNoShow(booking)) && (
+                  <div className="flex flex-wrap gap-2">
+                    {booking.status === 'PAID' && onConfirm && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onConfirm}
+                        disabled={isLoading}
+                      >
+                        {isUpdating ? <Spinner className="w-4 h-4 mr-2" /> : null}
+                        Marcar confirmado
+                      </Button>
+                    )}
+                    {canCompleteBooking(booking) && onComplete && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onComplete}
+                        disabled={isLoading}
+                      >
+                        {isUpdating ? <Spinner className="w-4 h-4 mr-2" /> : null}
+                        Marcar completado
+                      </Button>
+                    )}
+                    {canMarkNoShow(booking) && onNoShow && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onNoShow}
+                        disabled={isLoading}
+                        className="text-orange-600"
+                      >
+                        {isUpdating ? <Spinner className="w-4 h-4 mr-2" /> : null}
+                        Marcar no-show
+                      </Button>
+                    )}
+                  </div>
                 )}
-                {canCompleteBooking(booking) && onComplete && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onComplete}
-                    disabled={isLoading}
-                  >
-                    {isUpdating ? <Spinner className="w-4 h-4 mr-2" /> : null}
-                    Marcar completado
-                  </Button>
-                )}
-                {canMarkNoShow(booking) && onNoShow && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onNoShow}
-                    disabled={isLoading}
-                    className="text-orange-600"
-                  >
-                    {isUpdating ? <Spinner className="w-4 h-4 mr-2" /> : null}
-                    Marcar no-show
-                  </Button>
-                )}
-              </div>
+              </>
+            )}
+
+            {/* Payments tab */}
+            {activeTab === 'payments' && (
+              <PaymentLinkSection
+                bookingId={booking.id}
+                totalPrice={booking.totalPrice}
+                depositAmount={booking.depositAmount}
+                depositPaid={booking.depositPaid}
+                balancePaid={booking.balancePaid}
+                currencyCode={currencyCode}
+                customerEmail={booking.customerEmail || undefined}
+                customerName={booking.customerName}
+              />
             )}
           </div>
         )}

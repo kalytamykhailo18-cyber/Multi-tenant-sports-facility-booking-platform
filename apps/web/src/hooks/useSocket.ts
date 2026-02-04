@@ -147,11 +147,11 @@ export function useSocketConnection(isAuthenticated: boolean): void {
  * Convenient wrapper for common booking event patterns
  */
 export function useBookingEvents(handlers: {
-  onCreated?: EventCallback;
-  onUpdated?: EventCallback;
-  onCancelled?: EventCallback;
-  onStatusChanged?: EventCallback;
-  onPaymentReceived?: EventCallback;
+  onCreated?: EventCallback<any>;
+  onUpdated?: EventCallback<any>;
+  onCancelled?: EventCallback<any>;
+  onStatusChanged?: EventCallback<any>;
+  onPaymentReceived?: EventCallback<any>;
 }): void {
   useSocketEvent(SOCKET_EVENTS.BOOKING_CREATED, handlers.onCreated ?? (() => {}), !!handlers.onCreated);
   useSocketEvent(SOCKET_EVENTS.BOOKING_UPDATED, handlers.onUpdated ?? (() => {}), !!handlers.onUpdated);
@@ -189,6 +189,20 @@ export function useNotificationEvents(handlers: {
   onNew?: EventCallback;
 }): void {
   useSocketEvent(SOCKET_EVENTS.NOTIFICATION_NEW, handlers.onNew ?? (() => {}), !!handlers.onNew);
+}
+
+/**
+ * Hook for payment-related socket events
+ * Handles real-time payment updates
+ */
+export function usePaymentEvents(handlers: {
+  onCreated?: EventCallback;
+  onUpdated?: EventCallback;
+  onStatusChanged?: EventCallback;
+}): void {
+  useSocketEvent(SOCKET_EVENTS.PAYMENT_CREATED, handlers.onCreated ?? (() => {}), !!handlers.onCreated);
+  useSocketEvent(SOCKET_EVENTS.PAYMENT_UPDATED, handlers.onUpdated ?? (() => {}), !!handlers.onUpdated);
+  useSocketEvent(SOCKET_EVENTS.PAYMENT_STATUS_CHANGED, handlers.onStatusChanged ?? (() => {}), !!handlers.onStatusChanged);
 }
 
 // Export socket events for convenience

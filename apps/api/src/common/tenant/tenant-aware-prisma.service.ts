@@ -2,7 +2,7 @@
 // Provides Prisma queries that automatically filter by tenant
 
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../prisma';
+import { PrismaService } from '../../prisma/prisma.service';
 import { TenantContextService } from './tenant-context.service';
 import { Prisma } from '@prisma/client';
 

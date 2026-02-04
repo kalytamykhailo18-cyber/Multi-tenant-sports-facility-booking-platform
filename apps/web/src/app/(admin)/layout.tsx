@@ -3,10 +3,11 @@
 
 'use client';
 
-import { ProtectedRoute } from '@/components/auth';
+import { ProtectedRoute } from '@/components/auth/protected-route';
 import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui';
-import { LogOut, User, Building, CreditCard, BarChart } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { FiLogOut, FiUser, FiBarChart2 } from 'react-icons/fi';
+import { BsBuilding, BsCreditCard } from 'react-icons/bs';
 import { useRouter } from 'next/navigation';
 
 export default function AdminLayout({
@@ -52,7 +53,7 @@ function AdminContent({ children }: { children: React.ReactNode }) {
               {/* User Info */}
               {user && (
                 <div className="flex items-center space-x-2 text-sm">
-                  <User className="h-4 w-4" />
+                  <FiUser className="h-4 w-4" />
                   <span>{user.fullName}</span>
                   <span className="text-xs bg-amber-500 text-black px-2 py-1 rounded">
                     SUPER ADMIN
@@ -67,7 +68,7 @@ function AdminContent({ children }: { children: React.ReactNode }) {
                 onClick={handleLogout}
                 className="flex items-center space-x-1 text-white hover:text-gray-200"
               >
-                <LogOut className="h-4 w-4" />
+                <FiLogOut className="h-4 w-4" />
                 <span>Salir</span>
               </Button>
             </div>
@@ -85,7 +86,7 @@ function AdminContent({ children }: { children: React.ReactNode }) {
               className="w-full justify-start text-white hover:bg-slate-700"
               onClick={() => navigateTo('/admin')}
             >
-              <BarChart className="h-4 w-4 mr-2" />
+              <FiBarChart2 className="h-4 w-4 mr-2" />
               Dashboard
             </Button>
             <Button
@@ -93,7 +94,7 @@ function AdminContent({ children }: { children: React.ReactNode }) {
               className="w-full justify-start text-white hover:bg-slate-700"
               onClick={() => navigateTo('/admin/facilities')}
             >
-              <Building className="h-4 w-4 mr-2" />
+              <BsBuilding className="h-4 w-4 mr-2" />
               Establecimientos
             </Button>
             <Button
@@ -101,7 +102,7 @@ function AdminContent({ children }: { children: React.ReactNode }) {
               className="w-full justify-start text-white hover:bg-slate-700"
               onClick={() => navigateTo('/admin/subscriptions')}
             >
-              <CreditCard className="h-4 w-4 mr-2" />
+              <BsCreditCard className="h-4 w-4 mr-2" />
               Suscripciones
             </Button>
           </nav>

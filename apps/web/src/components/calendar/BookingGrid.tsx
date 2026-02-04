@@ -15,6 +15,8 @@ import {
   type TimeSlot,
   type DaySlotsResponse,
 } from '@/lib/bookings-api';
+import { FiCalendar, FiAlertTriangle, FiClock } from 'react-icons/fi';
+import { MdSportsSoccer, MdBlock } from 'react-icons/md';
 
 interface BookingGridProps {
   facilityId?: string;
@@ -185,7 +187,7 @@ export function BookingGrid({
     return (
       <Card>
         <CardContent className="py-12 text-center">
-          <div className="text-4xl mb-4 opacity-30">📅</div>
+          <FiCalendar className="text-4xl mb-4 opacity-30 mx-auto" />
           <p className="text-muted-foreground">
             Selecciona un establecimiento para ver el calendario
           </p>
@@ -357,7 +359,7 @@ export function BookingGrid({
         {/* Error state */}
         {error && (
           <div className="py-12 text-center px-4">
-            <div className="text-4xl mb-4">⚠️</div>
+            <FiAlertTriangle className="text-4xl mb-4 mx-auto text-destructive" />
             <p className="text-destructive mb-4 text-sm">{error}</p>
             {onRefresh && (
               <Button variant="outline" size="sm" onClick={onRefresh}>
@@ -370,7 +372,7 @@ export function BookingGrid({
         {/* Closed state */}
         {daySlots && !daySlots.isOpen && (
           <div className="py-12 text-center px-4">
-            <div className="text-4xl mb-4">🚫</div>
+            <MdBlock className="text-4xl mb-4 mx-auto text-muted-foreground" />
             <p className="text-xl font-medium text-muted-foreground mb-2">
               Cerrado
             </p>
@@ -439,7 +441,7 @@ export function BookingGrid({
             {/* Court columns */}
             {daySlots.courts.length === 0 ? (
               <div className="flex-1 py-12 text-center">
-                <div className="text-4xl mb-4 opacity-30">🏟️</div>
+                <MdSportsSoccer className="text-4xl mb-4 opacity-30 mx-auto" />
                 <p className="text-muted-foreground">
                   No hay canchas configuradas
                 </p>
@@ -469,7 +471,7 @@ export function BookingGrid({
             'text-[11px] sm:text-xs text-muted-foreground bg-muted/20',
           )}>
             <span className="flex items-center gap-1">
-              <span>🕐</span>
+              <FiClock />
               {daySlots.openTime} - {daySlots.closeTime}
             </span>
             <span className="flex items-center gap-1">

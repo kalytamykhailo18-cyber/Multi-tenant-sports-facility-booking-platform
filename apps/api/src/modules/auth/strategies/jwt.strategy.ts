@@ -6,7 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { JwtPayload } from '@sports-booking/shared';
-import { PrismaService } from '../../../prisma';
+import { PrismaService } from '../../../prisma/prisma.service';
 
 // Request user type attached after JWT validation
 export interface RequestUser {

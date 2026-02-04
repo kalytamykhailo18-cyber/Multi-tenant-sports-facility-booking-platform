@@ -13,7 +13,8 @@ import { useToast } from '@/hooks/useToast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { BookingGrid, ConnectedBookingModal } from '@/components/calendar';
+import { BookingGrid } from '@/components/calendar/BookingGrid';
+import { ConnectedBookingModal } from '@/components/calendar/BookingModal';
 import type { TimeSlot, Booking } from '@/lib/bookings-api';
 
 export default function CalendarPage() {

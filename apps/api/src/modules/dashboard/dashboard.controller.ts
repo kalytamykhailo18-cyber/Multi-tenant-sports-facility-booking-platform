@@ -13,13 +13,12 @@ import {
   ApiBearerAuth,
   ApiQuery,
 } from '@nestjs/swagger';
-import { Roles, TenantId } from '../../common/decorators';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { TenantId } from '../../common/decorators/tenant.decorator';
 import { DashboardService } from './dashboard.service';
-import {
-  DashboardStatsResponseDto,
-  DashboardAlertsResponseDto,
-  DashboardUpcomingResponseDto,
-} from './dto';
+import { DashboardStatsResponseDto } from './dto/dashboard-stats.dto';
+import { DashboardAlertsResponseDto } from './dto/dashboard-alerts.dto';
+import { DashboardUpcomingResponseDto } from './dto/dashboard-upcoming.dto';
 
 @ApiTags('Dashboard')
 @ApiBearerAuth()

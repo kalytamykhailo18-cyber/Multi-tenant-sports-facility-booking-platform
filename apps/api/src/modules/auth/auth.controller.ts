@@ -20,17 +20,15 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import {
-  ChangePasswordDto,
-  LoginDto,
-  RegisterDto,
-  RefreshTokenDto,
-  TokenResponseDto,
-  UserResponseDto,
-} from './dto';
-import { JwtAuthGuard } from '../../common/guards';
-import { CurrentUser, Public } from '../../common/decorators';
-import { AuditService, AuditEventType } from '../../common/audit';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { RefreshTokenDto, TokenResponseDto, UserResponseDto } from './dto/token-response.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
+import { AuditService } from '../../common/audit/audit.service';
+import { AuditEventType } from '../../common/audit/audit.types';
 import { RequestUser } from './strategies/jwt.strategy';
 
 @ApiTags('Authentication')

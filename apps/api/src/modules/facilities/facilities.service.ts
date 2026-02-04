@@ -8,28 +8,21 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma';
-import { TenantAwarePrismaService, TenantContextService } from '../../common/tenant';
-import { AuditService, AuditEventType, AuditEventCategory } from '../../common/audit';
-import { EncryptionService } from '../../common/encryption';
-import { WsGateway } from '../../common/gateway';
-import {
-  CreateFacilityDto,
-  UpdateFacilityDto,
-  QueryFacilityDto,
-  FacilityResponseDto,
-  FacilityListResponseDto,
-  CredentialsStatusDto,
-  UpdateWhatsAppCredentialsDto,
-  UpdateMercadoPagoCredentialsDto,
-  UpdateGeminiCredentialsDto,
-  UpdateWhisperCredentialsDto,
-  TestCredentialsResultDto,
-  CredentialType,
-  QrCodeResponseDto,
-  GenerateQrCodeDto,
-} from './dto';
+import { PrismaService } from '../../prisma/prisma.service';
+import { TenantAwarePrismaService } from '../../common/tenant/tenant-aware-prisma.service';
+import { TenantContextService } from '../../common/tenant/tenant-context.service';
+import { AuditService } from '../../common/audit/audit.service';
+import { AuditEventType, AuditEventCategory } from '../../common/audit/audit.types';
+import { EncryptionService } from '../../common/encryption/encryption.service';
+import { WsGateway } from '../../common/gateway/ws.gateway';
+import { CreateFacilityDto } from './dto/create-facility.dto';
+import { UpdateFacilityDto } from './dto/update-facility.dto';
+import { QueryFacilityDto } from './dto/query-facility.dto';
+import { FacilityResponseDto, FacilityListResponseDto, CredentialsStatusDto } from './dto/facility-response.dto';
+import { QrCodeResponseDto, GenerateQrCodeDto } from './dto/qr-code.dto';
+import { RegisterFacilityDto, RegisterFacilityResponseDto } from './dto/register-facility.dto';
 import { Facility, Prisma } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class FacilitiesService {
@@ -380,16 +373,12 @@ export class FacilitiesService {
   }
 
   /**
-   * Update facility credentials
+   * Update AI customization (greeting, business info, FAQs)
+   * NOTE: AI API keys are centralized in backend .env - NOT per-facility
    */
-  async updateCredentials(
+  async updateAICustomization(
     id: string,
-    type: CredentialType,
-    credentials:
-      | UpdateWhatsAppCredentialsDto
-      | UpdateMercadoPagoCredentialsDto
-      | UpdateGeminiCredentialsDto
-      | UpdateWhisperCredentialsDto,
+    data: { aiGreeting?: string; aiBusinessInfo?: string; aiFaqData?: any },
   ): Promise<{ message: string }> {
     // Verify facility exists and check access
     const facility = await this.prisma.facility.findUnique({
@@ -404,77 +393,39 @@ export class FacilitiesService {
     const isSuperAdmin = this.tenantContext.isSuperAdmin();
 
     if (!isSuperAdmin && contextTenantId !== facility.tenantId) {
-      throw new ForbiddenException('Cannot update credentials for this facility');
+      throw new ForbiddenException('Cannot update AI customization for this facility');
     }
 
-    // Prepare encrypted data based on type
-    let updateData: Prisma.FacilityUpdateInput = {};
-
-    switch (type) {
-      case 'whatsapp': {
-        const waCredentials = credentials as UpdateWhatsAppCredentialsDto;
-        updateData = {
-          whatsappApiKey: this.encryptionService.encrypt(waCredentials.apiKey),
-          whatsappApiSecret: this.encryptionService.encrypt(waCredentials.apiSecret),
-          ...(waCredentials.webhookToken && {
-            whatsappWebhookToken: this.encryptionService.encrypt(waCredentials.webhookToken),
-          }),
-        };
-        break;
-      }
-      case 'mercadopago': {
-        const mpCredentials = credentials as UpdateMercadoPagoCredentialsDto;
-        updateData = {
-          mercadopagoAccessToken: this.encryptionService.encrypt(mpCredentials.accessToken),
-          mercadopagoPublicKey: this.encryptionService.encrypt(mpCredentials.publicKey),
-        };
-        break;
-      }
-      case 'gemini': {
-        const geminiCredentials = credentials as UpdateGeminiCredentialsDto;
-        updateData = {
-          geminiApiKey: this.encryptionService.encrypt(geminiCredentials.apiKey),
-        };
-        break;
-      }
-      case 'whisper': {
-        const whisperCredentials = credentials as UpdateWhisperCredentialsDto;
-        updateData = {
-          whisperApiKey: this.encryptionService.encrypt(whisperCredentials.apiKey),
-        };
-        break;
-      }
-      default:
-        throw new BadRequestException(`Invalid credential type: ${type}`);
-    }
-
-    // Update credentials
+    // Update AI customization fields
     await this.prisma.facility.update({
       where: { id },
-      data: updateData,
+      data: {
+        ...(data.aiGreeting !== undefined && { aiGreeting: data.aiGreeting }),
+        ...(data.aiBusinessInfo !== undefined && { aiBusinessInfo: data.aiBusinessInfo }),
+        ...(data.aiFaqData !== undefined && { aiFaqData: data.aiFaqData }),
+      },
     });
 
-    // Log audit event (don't log actual credentials)
+    // Log audit event
     this.auditService.log({
       category: AuditEventCategory.FACILITY,
-      eventType: AuditEventType.FACILITY_CREDENTIALS_UPDATED,
+      eventType: AuditEventType.FACILITY_UPDATED,
       tenantId: facility.tenantId,
       actor: { type: 'SYSTEM', id: null },
-      action: `Facility ${type} credentials updated: ${facility.name}`,
+      action: `Facility AI customization updated: ${facility.name}`,
       entity: { type: 'FACILITY', id: facility.id },
-      metadata: { credentialType: type },
+      metadata: { hasGreeting: !!data.aiGreeting, hasBusinessInfo: !!data.aiBusinessInfo, hasFaqs: !!data.aiFaqData },
     });
 
-    this.logger.log(`Facility ${type} credentials updated: ${facility.name} (${facility.id})`);
+    this.logger.log(`Facility AI customization updated: ${facility.name} (${facility.id})`);
 
-    return { message: `${type} credentials updated successfully` };
+    return { message: 'AI customization updated successfully' };
   }
 
   /**
-   * Test facility credentials
+   * Check WhatsApp connection status
    */
-  async testCredentials(id: string, type: CredentialType): Promise<TestCredentialsResultDto> {
-    // Verify facility exists and check access
+  async checkWhatsAppConnection(id: string): Promise<{ connected: boolean; lastSeen?: Date | null; message: string }> {
     const facility = await this.prisma.facility.findUnique({
       where: { id },
     });
@@ -487,22 +438,44 @@ export class FacilitiesService {
     const isSuperAdmin = this.tenantContext.isSuperAdmin();
 
     if (!isSuperAdmin && contextTenantId !== facility.tenantId) {
-      throw new ForbiddenException('Cannot test credentials for this facility');
+      throw new ForbiddenException('Cannot check WhatsApp connection for this facility');
     }
 
-    // Test based on type
-    switch (type) {
-      case 'whatsapp':
-        return this.testWhatsAppCredentials(facility);
-      case 'mercadopago':
-        return this.testMercadoPagoCredentials(facility);
-      case 'gemini':
-        return this.testGeminiCredentials(facility);
-      case 'whisper':
-        return this.testWhisperCredentials(facility);
-      default:
-        throw new BadRequestException(`Invalid credential type: ${type}`);
+    return {
+      connected: facility.whatsappConnected,
+      lastSeen: facility.whatsappLastSeen,
+      message: facility.whatsappConnected
+        ? `WhatsApp connected (last seen: ${facility.whatsappLastSeen?.toISOString()})`
+        : 'WhatsApp not connected. Please scan QR code with facility phone.',
+    };
+  }
+
+  /**
+   * Check Mercado Pago OAuth connection status
+   */
+  async checkMercadoPagoConnection(id: string): Promise<{ connected: boolean; expiresAt?: Date | null; message: string }> {
+    const facility = await this.prisma.facility.findUnique({
+      where: { id },
+    });
+
+    if (!facility) {
+      throw new NotFoundException(`Facility with ID ${id} not found`);
     }
+
+    const contextTenantId = this.tenantContext.getTenantId();
+    const isSuperAdmin = this.tenantContext.isSuperAdmin();
+
+    if (!isSuperAdmin && contextTenantId !== facility.tenantId) {
+      throw new ForbiddenException('Cannot check Mercado Pago connection for this facility');
+    }
+
+    return {
+      connected: facility.mpConnected,
+      expiresAt: facility.mpTokenExpiresAt,
+      message: facility.mpConnected
+        ? `Mercado Pago connected via OAuth (token expires: ${facility.mpTokenExpiresAt?.toISOString()})`
+        : 'Mercado Pago not connected. Please click "Connect with Mercado Pago" button.',
+    };
   }
 
   /**
@@ -608,163 +581,222 @@ export class FacilitiesService {
   }
 
   /**
-   * Get credentials configuration status (not actual values)
+   * Get connection status for integrations
+   * NOTE: AI keys are centralized (backend .env) - NOT shown here
    */
   private getCredentialsStatus(facility: Facility): CredentialsStatusDto {
     return {
-      whatsapp: !!(facility.whatsappApiKey && facility.whatsappApiSecret),
-      mercadoPago: !!(facility.mercadopagoAccessToken && facility.mercadopagoPublicKey),
-      gemini: !!facility.geminiApiKey,
-      whisper: !!facility.whisperApiKey,
+      whatsappConnected: facility.whatsappConnected,
+      whatsappLastSeen: facility.whatsappLastSeen,
+      mercadoPagoConnected: facility.mpConnected,
+      mercadoPagoTokenExpires: facility.mpTokenExpiresAt,
+      aiCustomized: !!(facility.aiGreeting || facility.aiBusinessInfo || facility.aiFaqData),
     };
   }
 
   /**
-   * Test WhatsApp credentials
+   * Get Baileys WhatsApp session data (for bot worker)
+   * @internal - Only used by WhatsApp bot worker
    */
-  private async testWhatsAppCredentials(facility: Facility): Promise<TestCredentialsResultDto> {
-    if (!facility.whatsappApiKey || !facility.whatsappApiSecret) {
-      return {
-        success: false,
-        message: 'WhatsApp credentials not configured',
-      };
-    }
-
-    // TODO: Implement actual WhatsApp API test
-    // For now, just check if credentials exist
-    try {
-      // const apiKey = this.encryptionService.decrypt(facility.whatsappApiKey);
-      // const apiSecret = this.encryptionService.decrypt(facility.whatsappApiSecret);
-      // Test the connection...
-
-      return {
-        success: true,
-        message: 'WhatsApp credentials are configured (connection test not yet implemented)',
-      };
-    } catch {
-      return {
-        success: false,
-        message: 'Failed to validate WhatsApp credentials',
-      };
-    }
-  }
-
-  /**
-   * Test Mercado Pago credentials
-   */
-  private async testMercadoPagoCredentials(facility: Facility): Promise<TestCredentialsResultDto> {
-    if (!facility.mercadopagoAccessToken || !facility.mercadopagoPublicKey) {
-      return {
-        success: false,
-        message: 'Mercado Pago credentials not configured',
-      };
-    }
-
-    // TODO: Implement actual Mercado Pago API test
-    try {
-      return {
-        success: true,
-        message: 'Mercado Pago credentials are configured (connection test not yet implemented)',
-      };
-    } catch {
-      return {
-        success: false,
-        message: 'Failed to validate Mercado Pago credentials',
-      };
-    }
-  }
-
-  /**
-   * Test Gemini credentials
-   */
-  private async testGeminiCredentials(facility: Facility): Promise<TestCredentialsResultDto> {
-    if (!facility.geminiApiKey) {
-      return {
-        success: false,
-        message: 'Gemini API key not configured',
-      };
-    }
-
-    // TODO: Implement actual Gemini API test
-    try {
-      return {
-        success: true,
-        message: 'Gemini API key is configured (connection test not yet implemented)',
-      };
-    } catch {
-      return {
-        success: false,
-        message: 'Failed to validate Gemini API key',
-      };
-    }
-  }
-
-  /**
-   * Test Whisper credentials
-   */
-  private async testWhisperCredentials(facility: Facility): Promise<TestCredentialsResultDto> {
-    if (!facility.whisperApiKey) {
-      return {
-        success: false,
-        message: 'Whisper API key not configured',
-      };
-    }
-
-    // TODO: Implement actual Whisper/OpenAI API test
-    try {
-      return {
-        success: true,
-        message: 'Whisper API key is configured (connection test not yet implemented)',
-      };
-    } catch {
-      return {
-        success: false,
-        message: 'Failed to validate Whisper API key',
-      };
-    }
-  }
-
-  /**
-   * Get decrypted credentials (for internal use only)
-   */
-  async getDecryptedCredentials(
-    id: string,
-    type: CredentialType,
-  ): Promise<Record<string, string> | null> {
+  async getWhatsAppSession(id: string): Promise<string | null> {
     const facility = await this.prisma.facility.findUnique({
       where: { id },
+      select: { whatsappSessionData: true },
     });
 
-    if (!facility) return null;
+    if (!facility || !facility.whatsappSessionData) {
+      return null;
+    }
 
-    switch (type) {
-      case 'whatsapp':
-        if (!facility.whatsappApiKey || !facility.whatsappApiSecret) return null;
+    // Decrypt Baileys session data
+    return this.encryptionService.decrypt(facility.whatsappSessionData);
+  }
+
+  /**
+   * Update Baileys WhatsApp session data (called by bot worker)
+   * @internal - Only used by WhatsApp bot worker
+   */
+  async updateWhatsAppSession(id: string, sessionData: string): Promise<void> {
+    // Encrypt session data before storing
+    const encrypted = this.encryptionService.encrypt(sessionData);
+
+    await this.prisma.facility.update({
+      where: { id },
+      data: {
+        whatsappSessionData: encrypted,
+        whatsappConnected: true,
+        whatsappConnectedAt: new Date(),
+        whatsappLastSeen: new Date(),
+      },
+    });
+
+    this.logger.log(`WhatsApp session updated for facility: ${id}`);
+  }
+
+  /**
+   * Get Mercado Pago OAuth access token (for payments service)
+   * @internal - Only used by payments service
+   */
+  async getMercadoPagoToken(id: string): Promise<string | null> {
+    const facility = await this.prisma.facility.findUnique({
+      where: { id },
+      select: { mpAccessToken: true, mpConnected: true },
+    });
+
+    if (!facility || !facility.mpAccessToken || !facility.mpConnected) {
+      return null;
+    }
+
+    // Decrypt OAuth access token
+    return this.encryptionService.decrypt(facility.mpAccessToken);
+  }
+
+  /**
+   * Complete facility registration (Super Admin only)
+   * Creates tenant + facility + owner user + subscription in one transaction
+   */
+  async registerFacility(dto: RegisterFacilityDto): Promise<RegisterFacilityResponseDto> {
+    this.logger.log(`Starting facility registration: ${dto.facilityName}`);
+
+    // Generate unique slug from business name
+    const baseSlug = dto.businessName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    // Check if slug exists and add number if needed
+    let slug = baseSlug;
+    let counter = 1;
+    while (await this.prisma.tenant.findUnique({ where: { slug } })) {
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+
+    // Hash owner password
+    const passwordHash = await bcrypt.hash(dto.ownerPassword, 10);
+
+    // Calculate first due date (30 days from now if not provided)
+    const firstDueDate = dto.firstDueDate
+      ? new Date(dto.firstDueDate)
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    try {
+      // Create everything in a transaction
+      const result = await this.prisma.$transaction(async (tx) => {
+        // 1. Create Tenant
+        const tenant = await tx.tenant.create({
+          data: {
+            businessName: dto.businessName,
+            slug,
+            status: 'ACTIVE',
+          },
+        });
+
+        // 2. Create Owner User
+        const owner = await tx.user.create({
+          data: {
+            email: dto.ownerEmail,
+            passwordHash,
+            fullName: dto.ownerName,
+            phone: dto.ownerPhone,
+            role: 'OWNER',
+            tenantId: tenant.id,
+            isActive: true,
+          },
+        });
+
+        // 3. Create Facility
+        const facility = await tx.facility.create({
+          data: {
+            tenantId: tenant.id,
+            name: dto.facilityName,
+            address: dto.address,
+            city: dto.city,
+            country: dto.country,
+            phone: dto.facilityPhone,
+            email: dto.facilityEmail,
+            timezone: dto.timezone || 'America/Argentina/Buenos_Aires',
+            currencyCode: dto.currencyCode || 'ARS',
+            depositPercentage: dto.depositPercentage ?? 50,
+            cancellationHours: dto.cancellationHours ?? 24,
+            minBookingNoticeHours: dto.minBookingNoticeHours ?? 2,
+            maxBookingAdvanceDays: dto.maxBookingAdvanceDays ?? 30,
+            bufferMinutes: dto.bufferMinutes ?? 0,
+            sessionDurationMinutes: dto.sessionDurationMinutes || [60, 90],
+            whatsappPhone: dto.whatsappPhone,
+            status: dto.status || 'ACTIVE',
+          },
+        });
+
+        // 4. Create Subscription
+        const subscription = await tx.subscription.create({
+          data: {
+            tenantId: tenant.id,
+            planName: 'Standard',
+            priceAmount: dto.monthlyPrice,
+            currency: dto.currencyCode || 'ARS',
+            billingCycle: 'MONTHLY',
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: firstDueDate,
+            status: 'ACTIVE',
+            nextPaymentDate: firstDueDate,
+            dueSoonDays: 5,
+          },
+        });
+
         return {
-          apiKey: this.encryptionService.decrypt(facility.whatsappApiKey),
-          apiSecret: this.encryptionService.decrypt(facility.whatsappApiSecret),
-          webhookToken: facility.whatsappWebhookToken
-            ? this.encryptionService.decrypt(facility.whatsappWebhookToken)
-            : '',
+          tenant,
+          owner,
+          facility,
+          subscription,
         };
-      case 'mercadopago':
-        if (!facility.mercadopagoAccessToken || !facility.mercadopagoPublicKey) return null;
-        return {
-          accessToken: this.encryptionService.decrypt(facility.mercadopagoAccessToken),
-          publicKey: this.encryptionService.decrypt(facility.mercadopagoPublicKey),
-        };
-      case 'gemini':
-        if (!facility.geminiApiKey) return null;
-        return {
-          apiKey: this.encryptionService.decrypt(facility.geminiApiKey),
-        };
-      case 'whisper':
-        if (!facility.whisperApiKey) return null;
-        return {
-          apiKey: this.encryptionService.decrypt(facility.whisperApiKey),
-        };
-      default:
-        return null;
+      });
+
+      this.logger.log(
+        `Facility registered successfully: ${result.facility.id} (Tenant: ${result.tenant.id})`,
+      );
+
+      // Log audit event
+      this.auditService.log({
+        category: AuditEventCategory.FACILITY,
+        eventType: AuditEventType.FACILITY_CREATED,
+        action: 'Facility registered via Super Admin',
+        tenantId: result.tenant.id,
+        actor: {
+          id: result.owner.id,
+          type: 'USER',
+          email: result.owner.email,
+          role: result.owner.role,
+        },
+        metadata: {
+          facilityId: result.facility.id,
+          facilityName: result.facility.name,
+          ownerName: result.owner.fullName,
+          subscriptionId: result.subscription.id,
+        },
+      });
+
+      // Emit WebSocket event
+      this.wsGateway.emitToTenant(result.tenant.id, 'facility:registered', {
+        facilityId: result.facility.id,
+        facilityName: result.facility.name,
+        tenantId: result.tenant.id,
+      });
+
+      return {
+        tenantId: result.tenant.id,
+        facilityId: result.facility.id,
+        ownerId: result.owner.id,
+        subscriptionId: result.subscription.id,
+        ownerEmail: result.owner.email,
+        facilityName: result.facility.name,
+        message: 'Facility registered successfully',
+      };
+    } catch (error) {
+      this.logger.error('Facility registration failed:', error);
+      throw new BadRequestException(
+        'Failed to register facility. Please try again.',
+      );
     }
   }
 }

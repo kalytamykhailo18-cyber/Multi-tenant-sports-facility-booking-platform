@@ -20,17 +20,12 @@ import {
   ApiBearerAuth,
   ApiParam,
 } from '@nestjs/swagger';
-import { Roles } from '../../common/decorators';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CourtsService } from './courts.service';
-import {
-  CreateCourtDto,
-  UpdateCourtDto,
-  UpdateCourtStatusDto,
-  ReorderCourtsDto,
-  QueryCourtDto,
-  CourtResponseDto,
-  CourtListResponseDto,
-} from './dto';
+import { CreateCourtDto } from './dto/create-court.dto';
+import { UpdateCourtDto, UpdateCourtStatusDto, ReorderCourtsDto } from './dto/update-court.dto';
+import { QueryCourtDto } from './dto/query-court.dto';
+import { CourtResponseDto, CourtListResponseDto } from './dto/court-response.dto';
 
 @ApiTags('Courts')
 @ApiBearerAuth()

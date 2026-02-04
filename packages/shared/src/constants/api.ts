@@ -143,6 +143,11 @@ export const SOCKET_EVENTS = {
   BOOKING_STATUS_CHANGED: 'booking:status_changed',
   BOOKING_PAYMENT_RECEIVED: 'booking:payment_received',
 
+  // Payment events
+  PAYMENT_CREATED: 'payment:created',
+  PAYMENT_UPDATED: 'payment:updated',
+  PAYMENT_STATUS_CHANGED: 'payment:status_changed',
+
   // Slot events (for calendar real-time updates)
   SLOT_LOCKED: 'slot:locked',
   SLOT_UNLOCKED: 'slot:unlocked',
@@ -157,6 +162,11 @@ export const SOCKET_EVENTS = {
 
   // Notification events
   NOTIFICATION_NEW: 'notification:new',
+
+  // Takeover events (Phase 7.2)
+  TAKEOVER_ACTIVATED: 'takeover:activated',
+  TAKEOVER_RESUMED: 'takeover:resumed',
+  TAKEOVER_EXTENDED: 'takeover:extended',
 } as const;
 
 export type SocketEvent = typeof SOCKET_EVENTS[keyof typeof SOCKET_EVENTS];

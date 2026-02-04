@@ -2,19 +2,10 @@
 // Aggregates statistics from various sources for the owner dashboard
 
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../prisma';
-import {
-  DashboardStatsResponseDto,
-  TodayStatsDto,
-  WeekStatsDto,
-  SubscriptionStatsDto,
-  DashboardAlertsResponseDto,
-  DashboardAlertDto,
-  AlertType,
-  AlertPriority,
-  DashboardUpcomingResponseDto,
-  UpcomingBookingDto,
-} from './dto';
+import { PrismaService } from '../../prisma/prisma.service';
+import { DashboardStatsResponseDto, TodayStatsDto, WeekStatsDto, SubscriptionStatsDto } from './dto/dashboard-stats.dto';
+import { DashboardAlertsResponseDto, DashboardAlertDto, AlertType, AlertPriority } from './dto/dashboard-alerts.dto';
+import { DashboardUpcomingResponseDto, UpcomingBookingDto } from './dto/dashboard-upcoming.dto';
 
 @Injectable()
 export class DashboardService {

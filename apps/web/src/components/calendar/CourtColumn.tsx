@@ -8,7 +8,27 @@ import { useMemo } from 'react';
 import { cn } from '@/lib/cn';
 import { TimeSlot } from './TimeSlot';
 import { type TimeSlot as TimeSlotType, type CourtInfo } from '@/lib/bookings-api';
-import { getSportTypeLabel, getSportTypeIcon, type SportType } from '@/lib/courts-api';
+import { getSportTypeLabel, getSportTypeIconName, type SportType } from '@/lib/courts-api';
+import { MdSportsSoccer, MdSportsTennis } from 'react-icons/md';
+import { GiTennisCourt } from 'react-icons/gi';
+import { BiFootball } from 'react-icons/bi';
+import { FiCalendar } from 'react-icons/fi';
+
+// Sport icon component
+function SportIcon({ sportType, className }: { sportType: SportType; className?: string }) {
+  const iconName = getSportTypeIconName(sportType);
+  switch (iconName) {
+    case 'soccer':
+      return <MdSportsSoccer className={className} />;
+    case 'padel':
+      return <GiTennisCourt className={className} />;
+    case 'tennis':
+      return <MdSportsTennis className={className} />;
+    case 'multi':
+    default:
+      return <BiFootball className={className} />;
+  }
+}
 
 interface CourtColumnProps {
   court: CourtInfo;
@@ -51,9 +71,6 @@ export function CourtColumn({
     return { available, booked, total: courtSlots.length };
   }, [courtSlots]);
 
-  // Get sport type icon emoji
-  const sportIcon = getSportTypeIcon(court.sportType as SportType);
-
   return (
     <div
       className={cn(
@@ -76,9 +93,7 @@ export function CourtColumn({
         <div className="flex flex-col items-center text-center">
           {/* Sport icon and name */}
           <div className="flex items-center gap-1 mb-0.5">
-            <span className="text-sm" role="img" aria-label={court.sportType}>
-              {sportIcon}
-            </span>
+            <SportIcon sportType={court.sportType as SportType} className="text-sm" />
             <h3 className={cn(
               'font-semibold truncate',
               compact ? 'text-xs max-w-[70px]' : 'text-sm max-w-[120px] sm:max-w-[140px]',
@@ -131,7 +146,7 @@ export function CourtColumn({
             'text-center text-muted-foreground py-8 px-2',
             compact ? 'text-xs' : 'text-sm',
           )}>
-            <div className="text-2xl mb-2 opacity-30">📅</div>
+            <FiCalendar className="text-2xl mb-2 opacity-30 mx-auto" />
             Sin horarios
           </div>
         ) : (

@@ -9,15 +9,16 @@ import { useDashboard } from '@/hooks/useDashboard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import {
-  StatsCards,
-  QuickStats,
-  AlertsList,
-  AlertsBanner,
-  UpcomingBookings,
-  SubscriptionStatus,
-  SubscriptionBanner,
-} from '@/components/dashboard';
+import { StatsCards } from '@/components/dashboard/stats-cards';
+import { QuickStats } from '@/components/dashboard/stats-cards';
+import { AlertsList } from '@/components/dashboard/alerts-list';
+import { AlertsBanner } from '@/components/dashboard/alerts-list';
+import { UpcomingBookings } from '@/components/dashboard/upcoming-bookings';
+import { SubscriptionStatus } from '@/components/dashboard/subscription-status';
+import { SubscriptionBanner } from '@/components/dashboard/subscription-status';
+import { MdSportsSoccer } from 'react-icons/md';
+import { BsCreditCard } from 'react-icons/bs';
+import { FiUsers, FiCalendar, FiDollarSign } from 'react-icons/fi';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -85,7 +86,7 @@ export default function DashboardPage() {
                 className="h-auto py-4 flex flex-col items-center gap-2"
                 onClick={() => window.location.href = '/facilities'}
               >
-                <span className="text-2xl">🏟️</span>
+                <MdSportsSoccer className="text-2xl" />
                 <span>Gestionar Instalaciones</span>
               </Button>
               <Button
@@ -93,7 +94,7 @@ export default function DashboardPage() {
                 className="h-auto py-4 flex flex-col items-center gap-2"
                 onClick={() => window.location.href = '/subscriptions'}
               >
-                <span className="text-2xl">💳</span>
+                <BsCreditCard className="text-2xl" />
                 <span>Suscripciones</span>
               </Button>
               <Button
@@ -101,7 +102,7 @@ export default function DashboardPage() {
                 className="h-auto py-4 flex flex-col items-center gap-2"
                 onClick={() => window.location.href = '/tenants'}
               >
-                <span className="text-2xl">👥</span>
+                <FiUsers className="text-2xl" />
                 <span>Tenants</span>
               </Button>
             </div>
@@ -187,21 +188,21 @@ export default function DashboardPage() {
               className="w-full justify-start"
               onClick={() => window.location.href = '/calendar'}
             >
-              📅 Ver Calendario
+              <FiCalendar className="mr-2" /> Ver Calendario
             </Button>
             <Button
               variant="outline"
               className="w-full justify-start"
               onClick={() => window.location.href = '/customers'}
             >
-              👥 Clientes
+              <FiUsers className="mr-2" /> Clientes
             </Button>
             <Button
               variant="outline"
               className="w-full justify-start"
               onClick={() => window.location.href = '/finances'}
             >
-              💰 Finanzas
+              <FiDollarSign className="mr-2" /> Finanzas
             </Button>
           </CardContent>
         </Card>

@@ -7,7 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
 import { JwtPayload } from '@sports-booking/shared';
-import { PrismaService } from '../../prisma';
+import { PrismaService } from '../../prisma/prisma.service';
 
 // Interface for authenticated socket
 export interface AuthenticatedSocket extends Socket {

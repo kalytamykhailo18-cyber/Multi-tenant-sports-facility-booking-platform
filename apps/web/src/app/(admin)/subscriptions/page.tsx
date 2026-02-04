@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/protected-route';
-import { SubscriptionList } from '@/components/subscriptions';
+import { SubscriptionList } from '@/components/subscriptions/subscription-list';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useSubscriptions } from '@/hooks/useSubscriptions';

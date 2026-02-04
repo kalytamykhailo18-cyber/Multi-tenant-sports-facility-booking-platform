@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import type { Facility, CreateFacilityRequest, UpdateFacilityRequest } from '@/lib/facilities-api';
+import { FiSmartphone, FiLink, FiPauseCircle } from 'react-icons/fi';
 
 // Common timezones for Latin America
 const TIMEZONES = [
@@ -354,7 +355,7 @@ export function FacilityFormMultistep({
                   onClick={() => setWhatsappConfigType('individual')}
                   disabled={isSubmitting}
                 >
-                  <span className="mr-2">📱</span>
+                  <FiSmartphone className="mr-2" />
                   Número Individual (Propio)
                 </Button>
                 <p className="text-xs text-muted-foreground ml-8">
@@ -369,7 +370,7 @@ export function FacilityFormMultistep({
                   onClick={() => setWhatsappConfigType('shared')}
                   disabled={isSubmitting}
                 >
-                  <span className="mr-2">🔗</span>
+                  <FiLink className="mr-2" />
                   Número Compartido (Plataforma)
                 </Button>
                 <p className="text-xs text-muted-foreground ml-8">
@@ -384,7 +385,7 @@ export function FacilityFormMultistep({
                   onClick={() => setWhatsappConfigType('none')}
                   disabled={isSubmitting}
                 >
-                  <span className="mr-2">⏸️</span>
+                  <FiPauseCircle className="mr-2" />
                   Configurar Después
                 </Button>
                 <p className="text-xs text-muted-foreground ml-8">

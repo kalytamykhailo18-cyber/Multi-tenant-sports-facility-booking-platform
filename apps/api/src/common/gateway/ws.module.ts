@@ -6,7 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { WsGateway } from './ws.gateway';
 import { WsJwtGuard } from './ws-jwt.guard';
-import { PrismaModule } from '../../prisma';
+import { PrismaModule } from '../../prisma/prisma.module';
 
 @Global()
 @Module({
@@ -24,6 +24,6 @@ import { PrismaModule } from '../../prisma';
     }),
   ],
   providers: [WsGateway, WsJwtGuard],
-  exports: [WsGateway],
+  exports: [WsGateway, WsJwtGuard, JwtModule],
 })
 export class WsModule {}

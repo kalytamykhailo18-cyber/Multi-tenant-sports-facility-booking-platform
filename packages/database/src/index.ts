@@ -33,6 +33,7 @@ export type {
   User,
   Facility,
   Court,
+  Subscription,
   Prisma,
 } from '@prisma/client';
 
@@ -43,4 +44,6 @@ export {
   FacilityStatus,
   CourtStatus,
   SportType,
+  SubscriptionStatus,
+  BillingCycle,
 } from '@prisma/client';

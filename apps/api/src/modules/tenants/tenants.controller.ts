@@ -25,13 +25,10 @@ import { TenantsService } from './tenants.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequestUser } from '../auth/strategies/jwt.strategy';
-import {
-  CreateTenantDto,
-  UpdateTenantDto,
-  QueryTenantDto,
-  TenantResponseDto,
-  TenantListResponseDto,
-} from './dto';
+import { CreateTenantDto } from './dto/create-tenant.dto';
+import { UpdateTenantDto } from './dto/update-tenant.dto';
+import { QueryTenantDto } from './dto/query-tenant.dto';
+import { TenantResponseDto, TenantListResponseDto } from './dto/tenant-response.dto';
 
 @ApiTags('Tenants')
 @Controller('tenants')

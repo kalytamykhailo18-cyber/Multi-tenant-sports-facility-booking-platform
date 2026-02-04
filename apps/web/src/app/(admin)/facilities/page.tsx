@@ -5,7 +5,7 @@
 
 import { useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/protected-route';
-import { FacilityList } from '@/components/facilities';
+import { FacilityList } from '@/components/facilities/facility-list';
 import type { Facility } from '@/lib/facilities-api';
 
 export default function FacilitiesPage() {

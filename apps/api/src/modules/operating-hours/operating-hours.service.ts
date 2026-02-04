@@ -8,23 +8,18 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma';
-import { TenantContextService } from '../../common/tenant';
-import { AuditService, AuditEventType, AuditEventCategory } from '../../common/audit';
-import { WsGateway } from '../../common/gateway';
-import {
-  CreateOperatingHoursDto,
-  UpdateOperatingHoursDto,
-  BulkUpdateOperatingHoursDto,
-  DayScheduleUpdateDto,
-  OperatingHoursResponseDto,
-  WeeklyScheduleResponseDto,
-  CreateSpecialHoursDto,
-  UpdateSpecialHoursDto,
-  SpecialHoursResponseDto,
-  SpecialHoursListResponseDto,
-  QuerySpecialHoursDto,
-} from './dto';
+import { PrismaService } from '../../prisma/prisma.service';
+import { TenantContextService } from '../../common/tenant/tenant-context.service';
+import { AuditService } from '../../common/audit/audit.service';
+import { AuditEventType, AuditEventCategory } from '../../common/audit/audit.types';
+import { WsGateway } from '../../common/gateway/ws.gateway';
+import { CreateOperatingHoursDto } from './dto/create-operating-hours.dto';
+import { UpdateOperatingHoursDto, BulkUpdateOperatingHoursDto, DayScheduleUpdateDto } from './dto/update-operating-hours.dto';
+import { OperatingHoursResponseDto, WeeklyScheduleResponseDto } from './dto/operating-hours-response.dto';
+import { CreateSpecialHoursDto } from './dto/create-special-hours.dto';
+import { UpdateSpecialHoursDto } from './dto/update-special-hours.dto';
+import { SpecialHoursResponseDto, SpecialHoursListResponseDto } from './dto/special-hours-response.dto';
+import { QuerySpecialHoursDto } from './dto/query-special-hours.dto';
 import { OperatingHours, SpecialHours, Prisma } from '@prisma/client';
 
 // Day names for display

@@ -310,11 +310,9 @@ export class AuditInterceptor implements NestInterceptor {
       'apiKey',
       'apiSecret',
       'secret',
-      'mercadopagoAccessToken',
-      'whatsappApiKey',
-      'whatsappApiSecret',
-      'geminiApiKey',
-      'whisperApiKey',
+      'mpAccessToken',       // Mercado Pago OAuth token (encrypted)
+      'mpRefreshToken',      // Mercado Pago refresh token (encrypted)
+      'whatsappSessionData', // Baileys WhatsApp session (encrypted)
     ];
 
     for (const field of sensitiveFields) {

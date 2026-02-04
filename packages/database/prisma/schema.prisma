@@ -68,6 +68,57 @@ enum BookingStatus {
   NO_SHOW      // Customer didn't show up
 }
 
+enum ReputationLevel {
+  GOOD
+  CAUTION
+  POOR
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentType {
+  BOOKING_DEPOSIT      // Deposit for a booking (seña)
+  BOOKING_BALANCE      // Remaining balance for a booking
+  SUBSCRIPTION         // Monthly subscription payment
+}
+
+enum CreditReason {
+  EARLY_CANCELLATION   // Customer cancelled more than 24 hours before
+  REFUND               // Manual refund issued
+  MANUAL               // Owner manually added credit
+  PAYMENT_ERROR        // Credit due to payment processing error
+  PROMOTIONAL          // Promotional credit
+}
+
+enum WaitingListStatus {
+  WAITING              // Currently waiting for slot
+  NOTIFIED             // Customer notified of available slot
+  BOOKED               // Customer accepted and booking created
+  EXPIRED              // Notification expired (15 min passed)
+  CANCELLED            // Customer removed from waitlist
+}
+
+enum OpponentMatchStatus {
+  OPEN                 // Looking for opponents
+  MATCHED              // Found enough players
+  EXPIRED              // Request expired
+  CANCELLED            // Request cancelled by creator
+}
+
+enum SkillLevel {
+  BEGINNER             // Principiante
+  INTERMEDIATE         // Intermedio
+  ADVANCED             // Avanzado
+  ANY                  // Cualquier nivel
+}
+
 // ============================================
 // CORE MODELS
 // ============================================
@@ -91,6 +142,8 @@ model Tenant {
   operatingHours OperatingHours[]
   specialHours   SpecialHours[]
   bookings       Booking[]
+  customers      Customer[]
+  waitingList    WaitingList[]
 
   @@map("tenants")
 }
@@ -112,8 +165,9 @@ model User {
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   // Relations
-  tenant          Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdBookings Booking[]
+  tenant           Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBookings  Booking[]
+  customerNotes    CustomerNote[]
 
   @@index([tenantId])
   @@index([email])
@@ -139,14 +193,27 @@ model Facility {
   maxBookingAdvanceDays Int            @default(30) @map("max_booking_advance_days")
   bufferMinutes         Int            @default(0) @map("buffer_minutes")
   sessionDurationMinutes Int[]         @default([60, 90]) @map("session_duration_minutes")
+
+  // WhatsApp (Baileys/WPPConnect - QR code connection)
   whatsappPhone         String?        @map("whatsapp_phone")
-  whatsappApiKey        String?        @map("whatsapp_api_key")
-  whatsappApiSecret     String?        @map("whatsapp_api_secret")
-  whatsappWebhookToken  String?        @map("whatsapp_webhook_token")
-  mercadopagoAccessToken String?       @map("mercadopago_access_token")
-  mercadopagoPublicKey  String?        @map("mercadopago_public_key")
-  geminiApiKey          String?        @map("gemini_api_key")
-  whisperApiKey         String?        @map("whisper_api_key")
+  whatsappSessionData   String?        @db.Text @map("whatsapp_session_data") // Encrypted Baileys session
+  whatsappQrCode        String?        @db.Text @map("whatsapp_qr_code")       // Latest QR code for dashboard
+  whatsappConnected     Boolean        @default(false) @map("whatsapp_connected")
+  whatsappConnectedAt   DateTime?      @map("whatsapp_connected_at")
+  whatsappLastSeen      DateTime?      @map("whatsapp_last_seen")
+
+  // Mercado Pago (OAuth flow - NOT manual keys)
+  mpAccessToken         String?        @db.Text @map("mp_access_token")    // Encrypted OAuth access token
+  mpRefreshToken        String?        @db.Text @map("mp_refresh_token")   // Encrypted OAuth refresh token
+  mpTokenExpiresAt      DateTime?      @map("mp_token_expires_at")
+  mpUserId              String?        @map("mp_user_id")
+  mpConnected           Boolean        @default(false) @map("mp_connected")
+
+  // AI customization (NOT credentials - Santiago's centralized keys)
+  aiGreeting            String?        @db.Text @map("ai_greeting")         // Custom greeting message
+  aiBusinessInfo        String?        @db.Text @map("ai_business_info")    // Business info for AI context
+  aiFaqData             Json?          @map("ai_faq_data")                  // Custom FAQs
+
   status                FacilityStatus @default(ACTIVE)
   createdAt             DateTime       @default(now()) @map("created_at")
   updatedAt             DateTime       @updatedAt @map("updated_at")
@@ -157,6 +224,8 @@ model Facility {
   operatingHours OperatingHours[]
   specialHours   SpecialHours[]
   bookings       Booking[]
+  waitingList    WaitingList[]
+  opponentMatches OpponentMatch[]
 
   @@index([tenantId])
   @@index([status])
@@ -181,9 +250,12 @@ model Court {
   updatedAt     DateTime    @updatedAt @map("updated_at")
 
   // Relations
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  facility Facility  @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  bookings Booking[]
+  tenant              Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  facility            Facility   @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  bookings            Booking[]
+  preferredByCustomers Customer[] @relation("PreferredCourt")
+  waitingList         WaitingList[]
+  opponentMatches     OpponentMatch[]
 
   @@index([tenantId])
   @@index([facilityId])
@@ -347,4 +419,358 @@ model Booking {
   @@index([customerPhone])
   @@index([lockToken])
   @@map("bookings")
+}
+
+// ============================================
+// CUSTOMER MODELS
+// ============================================
+
+/// Customer represents a person who books courts via WhatsApp.
+/// Customers are NOT dashboard users - they only interact via WhatsApp.
+/// Tracks reputation, booking history, and credits.
+model Customer {
+  id                     String          @id @default(cuid())
+  tenantId               String          @map("tenant_id")
+  name                   String
+  phone                  String          // WhatsApp number - unique per tenant
+  email                  String?
+
+  // Reputation tracking
+  reputationScore        Int             @default(100) @map("reputation_score")
+  reputationLevel        ReputationLevel @default(GOOD) @map("reputation_level")
+
+  // Booking statistics
+  totalBookings          Int             @default(0) @map("total_bookings")
+  completedBookings      Int             @default(0) @map("completed_bookings")
+  noShowCount            Int             @default(0) @map("no_show_count")
+  cancellationCount      Int             @default(0) @map("cancellation_count")
+  lateCancellationCount  Int             @default(0) @map("late_cancellation_count")
+
+  // Credit balance (from early cancellations or refunds)
+  creditBalance          Decimal         @default(0) @map("credit_balance") @db.Decimal(10, 2)
+
+  // Internal notes from staff/owner
+  notes                  String?
+
+  // Blocking
+  isBlocked              Boolean         @default(false) @map("is_blocked")
+  blockedReason          String?         @map("blocked_reason")
+
+  // Preferences (learned from history)
+  preferredCourtId       String?         @map("preferred_court_id")
+  preferredTime          String?         @map("preferred_time") // e.g., "20:00"
+
+  // Activity tracking
+  lastBookingDate        DateTime?       @map("last_booking_date")
+
+  // Audit
+  createdAt              DateTime        @default(now()) @map("created_at")
+  updatedAt              DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  tenant                 Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  preferredCourt         Court?          @relation("PreferredCourt", fields: [preferredCourtId], references: [id], onDelete: SetNull)
+  customerNotes          CustomerNote[]
+  reputationHistory      ReputationHistory[]
+  credits                Credit[]
+  waitingList            WaitingList[]
+  createdOpponentMatches OpponentMatch[] @relation("OpponentMatchCreator")
+  joinedOpponentMatches  OpponentMatchPlayer[] @relation("OpponentMatchParticipant")
+
+  @@unique([tenantId, phone])
+  @@index([tenantId])
+  @@index([phone])
+  @@index([reputationLevel])
+  @@index([isBlocked])
+  @@map("customers")
+}
+
+/// CustomerNote stores internal notes about customers.
+/// Notes can be added by owners or staff for reference.
+model CustomerNote {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  customerId  String   @map("customer_id")
+  content     String
+  createdById String?  @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@map("customer_notes")
+}
+
+/// ReputationHistory tracks all reputation score changes.
+/// Used for audit and to understand customer behavior patterns.
+model ReputationHistory {
+  id            String   @id @default(cuid())
+  tenantId      String   @map("tenant_id")
+  customerId    String   @map("customer_id")
+  changeType    String   @map("change_type") // COMPLETED, NO_SHOW, EARLY_CANCEL, LATE_CANCEL, MANUAL
+  changeAmount  Int      @map("change_amount")
+  previousScore Int      @map("previous_score")
+  newScore      Int      @map("new_score")
+  bookingId     String?  @map("booking_id")
+  reason        String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([createdAt])
+  @@map("reputation_history")
+}
+
+// ============================================
+// PAYMENT MODELS
+// ============================================
+
+/// Payment tracks all payment transactions through Mercado Pago.
+/// Handles booking deposits, balance payments, and subscription payments.
+/// Includes idempotency key to prevent duplicate processing.
+model Payment {
+  id                     String        @id @default(cuid())
+  tenantId               String        @map("tenant_id")
+
+  // Reference to booking or subscription
+  bookingId              String?       @map("booking_id")
+  subscriptionId         String?       @map("subscription_id")
+  customerId             String?       @map("customer_id")
+
+  // Payment type and amounts
+  type                   PaymentType
+  amount                 Decimal       @db.Decimal(10, 2)
+  currency               String        @default("ARS")
+
+  // Mercado Pago references
+  externalPreferenceId   String?       @map("external_preference_id") // Mercado Pago preference ID
+  externalPaymentId      String?       @map("external_payment_id")    // Mercado Pago payment ID
+  externalStatus         String?       @map("external_status")        // Status from Mercado Pago
+
+  // Payment status
+  status                 PaymentStatus @default(PENDING)
+
+  // Payer information (from Mercado Pago)
+  payerEmail             String?       @map("payer_email")
+  payerPhone             String?       @map("payer_phone")
+  payerName              String?       @map("payer_name")
+  paymentMethod          String?       @map("payment_method") // credit_card, debit_card, etc.
+
+  // Idempotency for webhook processing
+  idempotencyKey         String?       @unique @map("idempotency_key")
+
+  // Processing timestamps
+  webhookReceivedAt      DateTime?     @map("webhook_received_at")
+  processedAt            DateTime?     @map("processed_at")
+
+  // Error handling
+  errorMessage           String?       @map("error_message")
+  retryCount             Int           @default(0) @map("retry_count")
+  lastRetryAt            DateTime?     @map("last_retry_at")
+
+  // Refund tracking
+  refundedAmount         Decimal?      @map("refunded_amount") @db.Decimal(10, 2)
+  refundedAt             DateTime?     @map("refunded_at")
+  refundReason           String?       @map("refund_reason")
+
+  // Audit
+  createdAt              DateTime      @default(now()) @map("created_at")
+  updatedAt              DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  credits                Credit[]      @relation("PaymentCredits")
+
+  @@index([tenantId])
+  @@index([bookingId])
+  @@index([subscriptionId])
+  @@index([customerId])
+  @@index([externalPreferenceId])
+  @@index([externalPaymentId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("payments")
+}
+
+/// Credit represents customer credit balance.
+/// Credits are created from early cancellations, refunds, or manual additions.
+/// Credits can be used for future bookings at the same facility.
+model Credit {
+  id                String       @id @default(cuid())
+  tenantId          String       @map("tenant_id")
+  customerId        String       @map("customer_id")
+
+  // Amounts
+  originalAmount    Decimal      @map("original_amount") @db.Decimal(10, 2)
+  remainingAmount   Decimal      @map("remaining_amount") @db.Decimal(10, 2)
+  currency          String       @default("ARS")
+
+  // Source tracking
+  reason            CreditReason
+  sourceBookingId   String?      @map("source_booking_id")   // Booking that generated this credit
+  sourcePaymentId   String?      @map("source_payment_id")   // Payment related to this credit
+  description       String?                                   // Additional description
+
+  // Usage tracking
+  usedAmount        Decimal      @default(0) @map("used_amount") @db.Decimal(10, 2)
+  usedInBookingIds  String[]     @map("used_in_booking_ids")   // Array of booking IDs where credit was used
+
+  // Expiration (optional)
+  expiresAt         DateTime?    @map("expires_at")
+  isExpired         Boolean      @default(false) @map("is_expired")
+
+  // Status
+  isActive          Boolean      @default(true) @map("is_active")
+
+  // Audit
+  createdById       String?      @map("created_by_id")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  customer          Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  sourcePayment     Payment?     @relation("PaymentCredits", fields: [sourcePaymentId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([sourceBookingId])
+  @@index([isActive])
+  @@index([expiresAt])
+  @@map("credits")
+}
+
+/// WaitingList represents customers waiting for a slot to become available.
+/// When a slot is cancelled > 2 hours before, waiting list is auto-notified.
+model WaitingList {
+  id                String              @id @default(cuid())
+  tenantId          String              @map("tenant_id")
+  facilityId        String              @map("facility_id")
+  customerId        String              @map("customer_id")
+
+  // Requested slot details
+  requestedDate     DateTime            @map("requested_date")
+  requestedTime     String              @map("requested_time")  // Format: "14:00"
+  courtId           String?             @map("court_id")        // Optional: specific court preference
+
+  // Queue position
+  position          Int                 @default(autoincrement())
+
+  // Status tracking
+  status            WaitingListStatus   @default(WAITING)
+  notifiedAt        DateTime?           @map("notified_at")
+  respondedAt       DateTime?           @map("responded_at")
+  expiresAt         DateTime?           @map("expires_at")      // 15 minutes after notification
+
+  // Notification details
+  bookingId         String?             @map("booking_id")      // Booking created if accepted
+  cancellationNote  String?             @map("cancellation_note") // Why removed from waitlist
+
+  // Audit
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  facility          Facility            @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  customer          Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  court             Court?              @relation(fields: [courtId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([facilityId])
+  @@index([customerId])
+  @@index([requestedDate])
+  @@index([status])
+  @@index([position])
+  @@map("waiting_list")
+}
+
+// ============================================
+// OPPONENT MATCHING MODELS
+// ============================================
+
+/// OpponentMatch represents a request to find opponents for a game.
+/// Customers can post when they're looking for players to complete their team.
+/// Other customers can browse and join these match requests.
+model OpponentMatch {
+  id                    String              @id @default(cuid())
+  tenantId              String              @map("tenant_id")
+  facilityId            String              @map("facility_id")
+  customerId            String              @map("customer_id")
+
+  // Match details
+  requestedDate         DateTime            @db.Date @map("requested_date")
+  requestedTime         String              @map("requested_time") // Format: "HH:mm"
+  courtId               String?             @map("court_id") // Optional: specific court preference
+  sportType             SportType           @default(SOCCER) @map("sport_type")
+
+  // Players needed
+  playersNeeded         Int                 @map("players_needed") // How many players are needed (1-10)
+  currentPlayers        Int                 @default(1) @map("current_players") // Including creator
+
+  // Skill level filter (optional)
+  skillLevel            SkillLevel          @default(ANY) @map("skill_level")
+
+  // Status
+  status                OpponentMatchStatus @default(OPEN)
+
+  // Contact and additional info
+  notes                 String?             // Additional details (e.g., "Buscamos 2 jugadores para fútbol 5")
+
+  // Expiration
+  expiresAt             DateTime            @map("expires_at") // Auto-expire after 24 hours or when match time passes
+
+  // Booking reference (if match completes and booking is created)
+  bookingId             String?             @map("booking_id")
+
+  // Audit
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  customer              Customer            @relation("OpponentMatchCreator", fields: [customerId], references: [id], onDelete: Cascade)
+  facility              Facility            @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  court                 Court?              @relation(fields: [courtId], references: [id], onDelete: SetNull)
+  joinedPlayers         OpponentMatchPlayer[]
+
+  @@index([tenantId])
+  @@index([facilityId])
+  @@index([customerId])
+  @@index([requestedDate])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("opponent_matches")
+}
+
+/// OpponentMatchPlayer tracks players who joined a match request.
+/// Links customers who responded to an opponent match request.
+model OpponentMatchPlayer {
+  id                    String              @id @default(cuid())
+  tenantId              String              @map("tenant_id")
+  opponentMatchId       String              @map("opponent_match_id")
+  customerId            String              @map("customer_id")
+
+  // Status
+  status                String              @default("JOINED") // JOINED, LEFT
+
+  // Notes from player
+  notes                 String?             // e.g., "Confirmo, llego 15 min antes"
+
+  // Audit
+  joinedAt              DateTime            @default(now()) @map("joined_at")
+  leftAt                DateTime?           @map("left_at")
+
+  // Relations
+  opponentMatch         OpponentMatch       @relation(fields: [opponentMatchId], references: [id], onDelete: Cascade)
+  customer              Customer            @relation("OpponentMatchParticipant", fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([opponentMatchId, customerId])
+  @@index([tenantId])
+  @@index([opponentMatchId])
+  @@index([customerId])
+  @@map("opponent_match_players")
 }

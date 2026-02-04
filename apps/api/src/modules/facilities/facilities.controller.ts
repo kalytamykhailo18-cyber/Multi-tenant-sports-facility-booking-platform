@@ -21,29 +21,45 @@ import {
   ApiParam,
   ApiBody,
 } from '@nestjs/swagger';
-import { Roles } from '../../common/decorators';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { FacilitiesService } from './facilities.service';
-import {
-  CreateFacilityDto,
-  UpdateFacilityDto,
-  QueryFacilityDto,
-  FacilityResponseDto,
-  FacilityListResponseDto,
-  UpdateWhatsAppCredentialsDto,
-  UpdateMercadoPagoCredentialsDto,
-  UpdateGeminiCredentialsDto,
-  UpdateWhisperCredentialsDto,
-  TestCredentialsResultDto,
-  CredentialType,
-  QrCodeResponseDto,
-  GenerateQrCodeDto,
-} from './dto';
+import { CreateFacilityDto } from './dto/create-facility.dto';
+import { UpdateFacilityDto } from './dto/update-facility.dto';
+import { QueryFacilityDto } from './dto/query-facility.dto';
+import { FacilityResponseDto, FacilityListResponseDto } from './dto/facility-response.dto';
+import { QrCodeResponseDto, GenerateQrCodeDto } from './dto/qr-code.dto';
+import { RegisterFacilityDto, RegisterFacilityResponseDto } from './dto/register-facility.dto';
 
 @ApiTags('Facilities')
 @ApiBearerAuth()
 @Controller('facilities')
 export class FacilitiesController {
   constructor(private readonly facilitiesService: FacilitiesService) {}
+
+  /**
+   * Complete facility registration (Super Admin only)
+   * Creates tenant + facility + owner user + subscription in one transaction
+   */
+  @Post('register')
+  @Roles('SUPER_ADMIN')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Complete facility registration',
+    description:
+      'Creates a complete facility setup including tenant, facility, owner user, and subscription. Super Admin only.',
+  })
+  @ApiBody({ type: RegisterFacilityDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Facility registered successfully',
+    type: RegisterFacilityResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Invalid input data or registration failed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Super Admin only' })
+  async register(@Body() dto: RegisterFacilityDto): Promise<RegisterFacilityResponseDto> {
+    return this.facilitiesService.registerFacility(dto);
+  }
 
   /**
    * Create a new facility
@@ -147,197 +163,8 @@ export class FacilitiesController {
     return this.facilitiesService.delete(id);
   }
 
-  /**
-   * Update WhatsApp credentials
-   */
-  @Patch(':id/credentials/whatsapp')
-  @Roles('SUPER_ADMIN', 'OWNER')
-  @ApiOperation({ summary: 'Update WhatsApp API credentials' })
-  @ApiParam({ name: 'id', description: 'Facility ID' })
-  @ApiBody({ type: UpdateWhatsAppCredentialsDto })
-  @ApiResponse({
-    status: 200,
-    description: 'Credentials updated successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string' },
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  @ApiResponse({ status: 404, description: 'Facility not found' })
-  async updateWhatsAppCredentials(
-    @Param('id') id: string,
-    @Body() dto: UpdateWhatsAppCredentialsDto,
-  ): Promise<{ message: string }> {
-    return this.facilitiesService.updateCredentials(id, 'whatsapp', dto);
-  }
-
-  /**
-   * Update Mercado Pago credentials
-   */
-  @Patch(':id/credentials/mercadopago')
-  @Roles('SUPER_ADMIN', 'OWNER')
-  @ApiOperation({ summary: 'Update Mercado Pago API credentials' })
-  @ApiParam({ name: 'id', description: 'Facility ID' })
-  @ApiBody({ type: UpdateMercadoPagoCredentialsDto })
-  @ApiResponse({
-    status: 200,
-    description: 'Credentials updated successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string' },
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  @ApiResponse({ status: 404, description: 'Facility not found' })
-  async updateMercadoPagoCredentials(
-    @Param('id') id: string,
-    @Body() dto: UpdateMercadoPagoCredentialsDto,
-  ): Promise<{ message: string }> {
-    return this.facilitiesService.updateCredentials(id, 'mercadopago', dto);
-  }
-
-  /**
-   * Update Gemini AI credentials
-   */
-  @Patch(':id/credentials/gemini')
-  @Roles('SUPER_ADMIN', 'OWNER')
-  @ApiOperation({ summary: 'Update Gemini AI API key' })
-  @ApiParam({ name: 'id', description: 'Facility ID' })
-  @ApiBody({ type: UpdateGeminiCredentialsDto })
-  @ApiResponse({
-    status: 200,
-    description: 'Credentials updated successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string' },
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  @ApiResponse({ status: 404, description: 'Facility not found' })
-  async updateGeminiCredentials(
-    @Param('id') id: string,
-    @Body() dto: UpdateGeminiCredentialsDto,
-  ): Promise<{ message: string }> {
-    return this.facilitiesService.updateCredentials(id, 'gemini', dto);
-  }
-
-  /**
-   * Update Whisper (Speech-to-text) credentials
-   */
-  @Patch(':id/credentials/whisper')
-  @Roles('SUPER_ADMIN', 'OWNER')
-  @ApiOperation({ summary: 'Update Whisper/OpenAI API key' })
-  @ApiParam({ name: 'id', description: 'Facility ID' })
-  @ApiBody({ type: UpdateWhisperCredentialsDto })
-  @ApiResponse({
-    status: 200,
-    description: 'Credentials updated successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string' },
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  @ApiResponse({ status: 404, description: 'Facility not found' })
-  async updateWhisperCredentials(
-    @Param('id') id: string,
-    @Body() dto: UpdateWhisperCredentialsDto,
-  ): Promise<{ message: string }> {
-    return this.facilitiesService.updateCredentials(id, 'whisper', dto);
-  }
-
-  /**
-   * Test WhatsApp credentials
-   */
-  @Post(':id/credentials/whatsapp/test')
-  @Roles('SUPER_ADMIN', 'OWNER')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Test WhatsApp API credentials' })
-  @ApiParam({ name: 'id', description: 'Facility ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Test result',
-    type: TestCredentialsResultDto,
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  @ApiResponse({ status: 404, description: 'Facility not found' })
-  async testWhatsAppCredentials(@Param('id') id: string): Promise<TestCredentialsResultDto> {
-    return this.facilitiesService.testCredentials(id, 'whatsapp');
-  }
-
-  /**
-   * Test Mercado Pago credentials
-   */
-  @Post(':id/credentials/mercadopago/test')
-  @Roles('SUPER_ADMIN', 'OWNER')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Test Mercado Pago API credentials' })
-  @ApiParam({ name: 'id', description: 'Facility ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Test result',
-    type: TestCredentialsResultDto,
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  @ApiResponse({ status: 404, description: 'Facility not found' })
-  async testMercadoPagoCredentials(@Param('id') id: string): Promise<TestCredentialsResultDto> {
-    return this.facilitiesService.testCredentials(id, 'mercadopago');
-  }
-
-  /**
-   * Test Gemini AI credentials
-   */
-  @Post(':id/credentials/gemini/test')
-  @Roles('SUPER_ADMIN', 'OWNER')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Test Gemini AI API key' })
-  @ApiParam({ name: 'id', description: 'Facility ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Test result',
-    type: TestCredentialsResultDto,
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  @ApiResponse({ status: 404, description: 'Facility not found' })
-  async testGeminiCredentials(@Param('id') id: string): Promise<TestCredentialsResultDto> {
-    return this.facilitiesService.testCredentials(id, 'gemini');
-  }
-
-  /**
-   * Test Whisper credentials
-   */
-  @Post(':id/credentials/whisper/test')
-  @Roles('SUPER_ADMIN', 'OWNER')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Test Whisper/OpenAI API key' })
-  @ApiParam({ name: 'id', description: 'Facility ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Test result',
-    type: TestCredentialsResultDto,
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  @ApiResponse({ status: 404, description: 'Facility not found' })
-  async testWhisperCredentials(@Param('id') id: string): Promise<TestCredentialsResultDto> {
-    return this.facilitiesService.testCredentials(id, 'whisper');
-  }
+  // NOTE: Credential endpoints removed - now use OAuth controller for Mercado Pago
+  // WhatsApp uses Baileys (QR code connection), AI keys are centralized (not per-facility)
 
   /**
    * Generate QR code for facility's WhatsApp

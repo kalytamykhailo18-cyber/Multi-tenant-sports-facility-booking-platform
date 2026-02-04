@@ -193,14 +193,14 @@ export function useOperatingHoursForm(facilityId: string) {
   const isSubmitting = updating || creatingDefaults;
 
   const handleSubmit = useCallback(
-    async (data: BulkUpdateOperatingHoursRequest) => {
-      return bulkUpdate(facilityId, data);
+    async (data: BulkUpdateOperatingHoursRequest): Promise<void> => {
+      await bulkUpdate(facilityId, data);
     },
     [facilityId, bulkUpdate],
   );
 
-  const handleCreateDefaults = useCallback(async () => {
-    return createDefaults(facilityId);
+  const handleCreateDefaults = useCallback(async (): Promise<void> => {
+    await createDefaults(facilityId);
   }, [facilityId, createDefaults]);
 
   return {

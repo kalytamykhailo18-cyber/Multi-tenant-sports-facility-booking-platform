@@ -8,16 +8,15 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma';
-import { AuditService, AuditEventType, AuditEventCategory } from '../../common/audit';
-import { WsGateway } from '../../common/gateway';
-import {
-  CreateSubscriptionDto,
-  UpdateSubscriptionDto,
-  QuerySubscriptionDto,
-  SubscriptionResponseDto,
-  SubscriptionListResponseDto,
-} from './dto';
+import { Cron } from '@nestjs/schedule';
+import { PrismaService } from '../../prisma/prisma.service';
+import { AuditService } from '../../common/audit/audit.service';
+import { AuditEventType, AuditEventCategory } from '../../common/audit/audit.types';
+import { WsGateway } from '../../common/gateway/ws.gateway';
+import { CreateSubscriptionDto } from './dto/create-subscription.dto';
+import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
+import { QuerySubscriptionDto } from './dto/query-subscription.dto';
+import { SubscriptionResponseDto, SubscriptionListResponseDto } from './dto/subscription-response.dto';
 import { Subscription, SubscriptionStatus, Prisma } from '@prisma/client';
 
 @Injectable()
@@ -29,6 +28,33 @@ export class SubscriptionsService {
     private readonly auditService: AuditService,
     private readonly wsGateway: WsGateway,
   ) {}
+
+  /**
+   * Generate Mercado Pago payment link for subscription renewal
+   * (To be implemented with PaymentsService integration)
+   */
+  async generateSubscriptionPaymentLink(tenantId: string): Promise<{ paymentLink: string; preferenceId: string }> {
+    const subscription = await this.prisma.subscription.findFirst({
+      where: { tenantId },
+      include: { tenant: true },
+    });
+
+    if (!subscription) {
+      throw new NotFoundException(`No subscription found for tenant ${tenantId}`);
+    }
+
+    // TODO: Integrate with PaymentsService to create MP preference
+    // For now, return a placeholder
+    // In full implementation, this would call PaymentsService.createPreference()
+    // with subscription-specific metadata
+
+    this.logger.log(`Generated payment link for subscription: ${subscription.id}`);
+
+    return {
+      paymentLink: `https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=PLACEHOLDER`,
+      preferenceId: 'PLACEHOLDER',
+    };
+  }
 
   /**
    * Create a new subscription for a tenant
@@ -514,7 +540,18 @@ export class SubscriptionsService {
   /**
    * Check and update subscription statuses (called by scheduled job)
    */
+  /**
+   * Cron job that runs daily at 6 AM to check subscription statuses
+   * - Updates to DUE_SOON when within dueSoonDays window
+   * - Auto-suspends when payment is overdue
+   */
+  @Cron('0 6 * * *', {
+    name: 'check-subscription-statuses',
+    timeZone: 'America/Argentina/Buenos_Aires',
+  })
   async checkAndUpdateStatuses(): Promise<{ updated: number; suspended: number }> {
+    this.logger.log('🔍 Checking subscription statuses...');
+
     let updatedCount = 0;
     let suspendedCount = 0;
 

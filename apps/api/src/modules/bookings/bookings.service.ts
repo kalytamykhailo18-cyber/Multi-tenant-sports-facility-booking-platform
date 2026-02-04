@@ -9,21 +9,18 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma';
-import { TenantContextService } from '../../common/tenant';
-import { AuditService, AuditEventType, AuditEventCategory } from '../../common/audit';
-import { WsGateway } from '../../common/gateway';
+import { PrismaService } from '../../prisma/prisma.service';
+import { TenantContextService } from '../../common/tenant/tenant-context.service';
+import { AuditService } from '../../common/audit/audit.service';
+import { AuditEventType, AuditEventCategory } from '../../common/audit/audit.types';
+import { WsGateway } from '../../common/gateway/ws.gateway';
 import { TimeSlotsService } from './time-slots.service';
-import {
-  CreateBookingDto,
-  UpdateBookingDto,
-  CancelBookingDto,
-  ChangeBookingStatusDto,
-  QueryBookingDto,
-  BookingResponseDto,
-  BookingListResponseDto,
-} from './dto';
+import { CreateBookingDto } from './dto/create-booking.dto';
+import { UpdateBookingDto, CancelBookingDto, ChangeBookingStatusDto } from './dto/update-booking.dto';
+import { QueryBookingDto } from './dto/query-booking.dto';
+import { BookingResponseDto, BookingListResponseDto, CancellationResultDto } from './dto/booking-response.dto';
 import { Booking, BookingStatus, CourtStatus, Prisma } from '@prisma/client';
+import { CreditsService } from '../credits/credits.service';
 import { Decimal } from '@prisma/client/runtime/library';
 
 // Spanish month names for date formatting
@@ -53,6 +50,7 @@ export class BookingsService {
     private readonly auditService: AuditService,
     private readonly wsGateway: WsGateway,
     private readonly timeSlotsService: TimeSlotsService,
+    private readonly creditsService: CreditsService,
   ) {}
 
   /**
@@ -659,8 +657,11 @@ export class BookingsService {
 
   /**
    * Cancel a booking
+   * Implements the 24-hour rule:
+   * - If cancelled more than 24 hours before: deposit becomes credit
+   * - If cancelled less than 24 hours before: deposit is forfeited
    */
-  async cancel(id: string, dto?: CancelBookingDto): Promise<BookingResponseDto> {
+  async cancel(id: string, dto?: CancelBookingDto): Promise<CancellationResultDto> {
     const booking = await this.prisma.booking.findUnique({
       where: { id },
       include: {
@@ -692,6 +693,24 @@ export class BookingsService {
       throw new BadRequestException('Cannot cancel a completed booking');
     }
 
+    // Calculate hours until booking
+    const now = new Date();
+    const bookingDateTime = new Date(booking.date);
+    const [hours, minutes] = booking.startTime.split(':').map(Number);
+    bookingDateTime.setHours(hours, minutes, 0, 0);
+    const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+    // Determine if deposit should become credit (>24 hours rule)
+    const isEarlyCancellation = hoursUntilBooking > 24;
+    const depositPaid = booking.depositPaid;
+    const depositAmount = Number(booking.depositAmount);
+
+    let depositConvertedToCredit = false;
+    let depositForfeited = false;
+    let creditId: string | undefined;
+    let creditAmount: number | undefined;
+    let message: string;
+
     // Update booking status
     const cancelledBooking = await this.prisma.booking.update({
       where: { id },
@@ -707,6 +726,42 @@ export class BookingsService {
       },
     });
 
+    // Handle deposit based on 24-hour rule
+    if (depositPaid && depositAmount > 0) {
+      if (isEarlyCancellation) {
+        // Early cancellation (>24 hours): Convert deposit to credit
+        try {
+          const credit = await this.creditsService.createFromCancellation(
+            booking.id,
+            depositAmount,
+            booking.paymentId || undefined,
+          );
+          depositConvertedToCredit = true;
+          creditId = credit.id;
+          creditAmount = depositAmount;
+          message = `Cancellation accepted. Deposit of $${depositAmount} converted to credit for future bookings.`;
+
+          this.logger.log(
+            `Booking ${id} cancelled early. Deposit $${depositAmount} converted to credit ${credit.id}`,
+          );
+        } catch (error) {
+          // Log error but don't fail the cancellation
+          this.logger.warn(
+            `Failed to create credit for booking ${id}: ${error}. Customer may not have a registered account.`,
+          );
+          message = `Cancellation accepted. Deposit credit could not be created automatically - please process manually.`;
+        }
+      } else {
+        // Late cancellation (<24 hours): Deposit is forfeited
+        depositForfeited = true;
+        message = `Cancellation accepted. Deposit of $${depositAmount} is forfeited as the booking is within 24 hours.`;
+
+        this.logger.log(`Booking ${id} cancelled late. Deposit $${depositAmount} forfeited.`);
+      }
+    } else {
+      message = 'Booking cancelled successfully.';
+    }
+
     // Log audit event
     this.auditService.log({
       category: AuditEventCategory.BOOKING,
@@ -715,7 +770,15 @@ export class BookingsService {
       actor: { type: 'USER', id: userId || null },
       action: `Booking cancelled: ${cancelledBooking.customerName}`,
       entity: { type: 'BOOKING', id: cancelledBooking.id },
-      metadata: { reason: dto?.reason },
+      metadata: {
+        reason: dto?.reason,
+        hoursUntilBooking: Math.round(hoursUntilBooking),
+        depositPaid,
+        depositAmount,
+        depositConvertedToCredit,
+        depositForfeited,
+        creditId,
+      },
     });
 
     this.logger.log(`Booking cancelled: ${cancelledBooking.id}`);
@@ -726,9 +789,23 @@ export class BookingsService {
       courtId: cancelledBooking.courtId,
       date: cancelledBooking.date,
       startTime: cancelledBooking.startTime,
+      depositConvertedToCredit,
+      depositForfeited,
     });
 
-    return this.toResponseDto(cancelledBooking, cancelledBooking.court, cancelledBooking.facility, cancelledBooking.createdBy);
+    return {
+      booking: this.toResponseDto(
+        cancelledBooking,
+        cancelledBooking.court,
+        cancelledBooking.facility,
+        cancelledBooking.createdBy,
+      ),
+      depositConvertedToCredit,
+      creditId,
+      creditAmount,
+      depositForfeited,
+      message,
+    };
   }
 
   /**

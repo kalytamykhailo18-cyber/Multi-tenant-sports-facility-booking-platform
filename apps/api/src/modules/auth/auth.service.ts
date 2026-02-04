@@ -10,9 +10,12 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { PrismaService } from '../../prisma';
-import { AuditService, AuditEventType } from '../../common/audit';
-import { LoginDto, RegisterDto, TokenResponseDto, UserResponseDto } from './dto';
+import { PrismaService } from '../../prisma/prisma.service';
+import { AuditService } from '../../common/audit/audit.service';
+import { AuditEventType } from '../../common/audit/audit.types';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { TokenResponseDto, UserResponseDto } from './dto/token-response.dto';
 import { JwtPayload, SafeUser } from '@sports-booking/shared';
 import { User, UserRole } from '@sports-booking/database';
 

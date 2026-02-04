@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { Loader2 } from 'lucide-react';
+import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 
 interface SpinnerProps extends React.HTMLAttributes<HTMLDivElement> {
   size?: 'sm' | 'default' | 'lg';
@@ -25,7 +25,7 @@ const Spinner = React.forwardRef<HTMLDivElement, SpinnerProps>(
         className={cn('flex items-center justify-center', className)}
         {...props}
       >
-        <Loader2 className={cn('animate-spin text-primary', sizeClasses[size])} />
+        <AiOutlineLoading3Quarters className={cn('animate-spin text-primary', sizeClasses[size])} />
         <span className="sr-only">Loading...</span>
       </div>
     );

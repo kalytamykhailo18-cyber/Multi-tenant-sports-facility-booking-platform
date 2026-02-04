@@ -2,7 +2,9 @@
 
 export * from './date.utils';
 export * from './currency.utils';
+export * from './phone.utils';
 export * from './validation.utils';
+export * from './encryption.utils';
 
 // String utilities
 

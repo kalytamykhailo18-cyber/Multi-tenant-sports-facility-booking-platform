@@ -15,7 +15,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
 import { JwtPayload, SOCKET_EVENTS } from '@sports-booking/shared';
-import { PrismaService } from '../../prisma';
+import { PrismaService } from '../../prisma/prisma.service';
 import { AuthenticatedSocket, WsJwtGuard } from './ws-jwt.guard';
 
 // Connected client info

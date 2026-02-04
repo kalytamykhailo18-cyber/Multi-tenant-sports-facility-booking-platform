@@ -3,9 +3,9 @@
 
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { PrismaService } from '../prisma';
-import { RedisService } from '../redis';
-import { Public } from '../common/decorators';
+import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
+import { Public } from '../common/decorators/public.decorator';
 
 interface HealthStatus {
   status: 'healthy' | 'unhealthy';

@@ -21,19 +21,14 @@ import {
   ApiBearerAuth,
   ApiParam,
 } from '@nestjs/swagger';
-import { Roles } from '../../common/decorators';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { OperatingHoursService } from './operating-hours.service';
-import {
-  UpdateOperatingHoursDto,
-  BulkUpdateOperatingHoursDto,
-  OperatingHoursResponseDto,
-  WeeklyScheduleResponseDto,
-  CreateSpecialHoursDto,
-  UpdateSpecialHoursDto,
-  SpecialHoursResponseDto,
-  SpecialHoursListResponseDto,
-  QuerySpecialHoursDto,
-} from './dto';
+import { UpdateOperatingHoursDto, BulkUpdateOperatingHoursDto, DayScheduleUpdateDto } from './dto/update-operating-hours.dto';
+import { OperatingHoursResponseDto, WeeklyScheduleResponseDto } from './dto/operating-hours-response.dto';
+import { CreateSpecialHoursDto } from './dto/create-special-hours.dto';
+import { UpdateSpecialHoursDto } from './dto/update-special-hours.dto';
+import { SpecialHoursResponseDto, SpecialHoursListResponseDto } from './dto/special-hours-response.dto';
+import { QuerySpecialHoursDto } from './dto/query-special-hours.dto';
 
 @ApiTags('Operating Hours')
 @ApiBearerAuth()

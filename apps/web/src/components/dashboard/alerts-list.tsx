@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import type { DashboardAlert, AlertPriority, AlertType } from '@/lib/dashboard-api';
+import { FiCalendar, FiMessageSquare, FiAlertTriangle } from 'react-icons/fi';
+import { BsCreditCard, BsMegaphone } from 'react-icons/bs';
+import type { IconType } from 'react-icons';
 
 interface AlertsListProps {
   alerts: DashboardAlert[];
@@ -23,12 +26,12 @@ const priorityConfig: Record<AlertPriority, { label: string; variant: 'default' 
   LOW: { label: 'Baja', variant: 'outline' },
 };
 
-const typeConfig: Record<AlertType, { icon: string }> = {
-  UNCONFIRMED_BOOKING: { icon: '📅' },
-  PENDING_ESCALATION: { icon: '💬' },
-  PAYMENT_ISSUE: { icon: '💳' },
-  SUBSCRIPTION_REMINDER: { icon: '📢' },
-  NO_SHOW_RISK: { icon: '⚠️' },
+const typeConfig: Record<AlertType, { Icon: IconType }> = {
+  UNCONFIRMED_BOOKING: { Icon: FiCalendar },
+  PENDING_ESCALATION: { Icon: FiMessageSquare },
+  PAYMENT_ISSUE: { Icon: BsCreditCard },
+  SUBSCRIPTION_REMINDER: { Icon: BsMegaphone },
+  NO_SHOW_RISK: { Icon: FiAlertTriangle },
 };
 
 export function AlertsList({ alerts, loading, maxItems = 5 }: AlertsListProps) {
@@ -115,6 +118,7 @@ interface AlertItemProps {
 function AlertItem({ alert, onClick }: AlertItemProps) {
   const priority = priorityConfig[alert.priority];
   const type = typeConfig[alert.type];
+  const IconComponent = type.Icon;
 
   return (
     <div
@@ -126,7 +130,7 @@ function AlertItem({ alert, onClick }: AlertItemProps) {
       onClick={onClick}
     >
       <div className="flex items-start gap-3">
-        <span className="text-lg">{type.icon}</span>
+        <IconComponent className="text-lg flex-shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <p className="font-medium text-sm truncate">{alert.title}</p>
@@ -156,6 +160,7 @@ export function AlertsBanner({ alerts }: AlertsBannerProps) {
   }
 
   const alert = urgentAlerts[0];
+  const IconComponent = typeConfig[alert.type].Icon;
 
   return (
     <div
@@ -163,7 +168,7 @@ export function AlertsBanner({ alerts }: AlertsBannerProps) {
       onClick={() => alert.actionLink && router.push(alert.actionLink)}
     >
       <div className="flex items-center gap-3">
-        <span className="text-xl">{typeConfig[alert.type].icon}</span>
+        <IconComponent className="text-xl flex-shrink-0" />
         <div className="flex-1">
           <p className="font-semibold">{alert.title}</p>
           <p className="text-sm opacity-90">{alert.description}</p>

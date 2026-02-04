@@ -103,7 +103,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 // Request options type
 interface RequestOptions {
   headers?: HeadersInit;
-  params?: Record<string, string | number | boolean | undefined>;
+  params?: Record<string, string | number | boolean | string[] | number[] | undefined>;
 }
 
 // Build URL with query params
@@ -115,7 +115,14 @@ function buildUrl(url: string, params?: RequestOptions['params']): string {
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined) {
-      searchParams.append(key, String(value));
+      // Handle arrays by adding multiple params with the same key
+      if (Array.isArray(value)) {
+        value.forEach((item) => {
+          searchParams.append(key, String(item));
+        });
+      } else {
+        searchParams.append(key, String(value));
+      }
     }
   });
 

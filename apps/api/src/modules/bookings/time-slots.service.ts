@@ -9,17 +9,13 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma';
-import { TenantContextService } from '../../common/tenant';
+import { PrismaService } from '../../prisma/prisma.service';
+import { TenantContextService } from '../../common/tenant/tenant-context.service';
 import { RedisService } from '../../redis/redis.service';
-import { WsGateway } from '../../common/gateway';
+import { WsGateway } from '../../common/gateway/ws.gateway';
 import { OperatingHoursService } from '../operating-hours/operating-hours.service';
-import {
-  QueryTimeSlotsDto,
-  TimeSlotResponseDto,
-  DaySlotsResponseDto,
-  SlotLockResponseDto,
-} from './dto';
+import { QueryTimeSlotsDto } from './dto/query-booking.dto';
+import { TimeSlotResponseDto, DaySlotsResponseDto, SlotLockResponseDto } from './dto/booking-response.dto';
 import { BookingStatus, CourtStatus, Prisma } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 

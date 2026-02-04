@@ -9,24 +9,16 @@ import { ProtectedRoute } from '@/components/auth/protected-route';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import {
-  FacilityStatusBadge,
-  CredentialsStatusDisplay,
-  CredentialsForm,
-  QrCodeDisplay,
-  FacilityForm,
-} from '@/components/facilities';
-import { SubscriptionStatusDisplay } from '@/components/subscriptions';
-import {
-  CourtList,
-  CourtForm,
-  CourtStatusModal,
-  CourtDeleteModal,
-} from '@/components/courts';
-import {
-  OperatingHoursForm,
-  SpecialHoursList,
-} from '@/components/operating-hours';
+import { FacilityStatusBadge } from '@/components/facilities/facility-status-badge';
+import { CredentialsStatusDisplay } from '@/components/facilities/credentials-status';
+import { CredentialsForm } from '@/components/facilities/credentials-form';
+import { QrCodeDisplay } from '@/components/facilities/qr-code-display';
+import { FacilityForm } from '@/components/facilities/facility-form';
+import { SubscriptionStatusDisplay } from '@/components/subscriptions/subscription-status-display';
+import { CourtList } from '@/components/courts/court-list';
+import { CourtForm, CourtStatusModal, CourtDeleteModal } from '@/components/courts/court-form';
+import { OperatingHoursForm } from '@/components/operating-hours/operating-hours-form';
+import { SpecialHoursList } from '@/components/operating-hours/special-hours-list';
 import { useFacilities } from '@/hooks/useFacilities';
 import { useCourtsByFacility, useCourts } from '@/hooks/useCourts';
 import {

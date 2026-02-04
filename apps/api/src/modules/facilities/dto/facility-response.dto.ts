@@ -4,19 +4,39 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { FacilityStatus } from '@prisma/client';
 
-// Credentials status (not the actual values)
+// Connection status for integrations
 export class CredentialsStatusDto {
-  @ApiProperty({ description: 'WhatsApp credentials configured', example: true })
-  whatsapp: boolean;
+  @ApiProperty({
+    description: 'WhatsApp connected via Baileys',
+    example: true
+  })
+  whatsappConnected: boolean;
 
-  @ApiProperty({ description: 'Mercado Pago credentials configured', example: true })
-  mercadoPago: boolean;
+  @ApiPropertyOptional({
+    description: 'WhatsApp last seen timestamp',
+    example: '2024-02-01T12:00:00.000Z',
+    nullable: true,
+  })
+  whatsappLastSeen?: Date | null;
 
-  @ApiProperty({ description: 'Gemini API key configured', example: false })
-  gemini: boolean;
+  @ApiProperty({
+    description: 'Mercado Pago connected via OAuth',
+    example: true
+  })
+  mercadoPagoConnected: boolean;
 
-  @ApiProperty({ description: 'Whisper API key configured', example: false })
-  whisper: boolean;
+  @ApiPropertyOptional({
+    description: 'Mercado Pago OAuth token expiration',
+    example: '2024-08-01T12:00:00.000Z',
+    nullable: true,
+  })
+  mercadoPagoTokenExpires?: Date | null;
+
+  @ApiProperty({
+    description: 'AI customization configured (greeting, business info, FAQs)',
+    example: false
+  })
+  aiCustomized: boolean;
 }
 
 export class FacilityResponseDto {

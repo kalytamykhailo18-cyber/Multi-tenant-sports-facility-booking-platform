@@ -63,3 +63,7 @@ temp/
 *.pem
 *.key
 credentials.json
+.claude
+docs
+*.md
+overview

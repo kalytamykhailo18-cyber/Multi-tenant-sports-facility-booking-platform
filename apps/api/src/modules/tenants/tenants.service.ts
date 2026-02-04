@@ -9,17 +9,16 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma';
-import { TenantAwarePrismaService, TenantContextService } from '../../common/tenant';
-import { AuditService, AuditEventType, AuditEventCategory } from '../../common/audit';
-import { WsGateway } from '../../common/gateway';
-import {
-  CreateTenantDto,
-  UpdateTenantDto,
-  QueryTenantDto,
-  TenantResponseDto,
-  TenantListResponseDto,
-} from './dto';
+import { PrismaService } from '../../prisma/prisma.service';
+import { TenantAwarePrismaService } from '../../common/tenant/tenant-aware-prisma.service';
+import { TenantContextService } from '../../common/tenant/tenant-context.service';
+import { AuditService } from '../../common/audit/audit.service';
+import { AuditEventType, AuditEventCategory } from '../../common/audit/audit.types';
+import { WsGateway } from '../../common/gateway/ws.gateway';
+import { CreateTenantDto } from './dto/create-tenant.dto';
+import { UpdateTenantDto } from './dto/update-tenant.dto';
+import { QueryTenantDto } from './dto/query-tenant.dto';
+import { TenantResponseDto, TenantListResponseDto } from './dto/tenant-response.dto';
 import { Tenant, Prisma } from '@prisma/client';
 
 @Injectable()

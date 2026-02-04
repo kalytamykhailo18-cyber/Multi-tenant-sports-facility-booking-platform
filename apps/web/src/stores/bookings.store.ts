@@ -512,11 +512,11 @@ export const useBookingsStore = create<BookingsState>((set, get) => ({
   handleBookingUpdated: (bookingData: Partial<Booking>) => {
     set((state) => ({
       bookings: state.bookings.map((b) =>
-        b.id === bookingData.id ? { ...b, ...bookingData } : b
+        b.id === bookingData.id ? { ...b, ...bookingData } as Booking : b
       ),
       selectedBooking:
         state.selectedBooking?.id === bookingData.id
-          ? { ...state.selectedBooking, ...bookingData }
+          ? { ...state.selectedBooking, ...bookingData } as Booking
           : state.selectedBooking,
     }));
 

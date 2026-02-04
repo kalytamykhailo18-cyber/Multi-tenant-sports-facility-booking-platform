@@ -132,6 +132,49 @@ export interface GenerateQrCodeRequest {
   size?: number;
 }
 
+export interface RegisterFacilityRequest {
+  // Facility Information
+  facilityName: string;
+  businessName: string;
+  address: string;
+  city: string;
+  country: string;
+  facilityPhone: string;
+  facilityEmail: string;
+
+  // Owner Information
+  ownerName: string;
+  ownerEmail: string;
+  ownerPhone: string;
+  ownerPassword: string;
+
+  // Configuration
+  timezone?: string;
+  currencyCode?: string;
+  depositPercentage?: number;
+  cancellationHours?: number;
+  minBookingNoticeHours?: number;
+  maxBookingAdvanceDays?: number;
+  bufferMinutes?: number;
+  sessionDurationMinutes?: number[];
+  whatsappPhone?: string;
+  status?: 'ACTIVE' | 'SUSPENDED' | 'INACTIVE';
+
+  // Subscription
+  monthlyPrice: number;
+  firstDueDate?: string;
+}
+
+export interface RegisterFacilityResponse {
+  tenantId: string;
+  facilityId: string;
+  ownerId: string;
+  subscriptionId: string;
+  ownerEmail: string;
+  facilityName: string;
+  message: string;
+}
+
 // API functions
 export const facilitiesApi = {
   /**
@@ -235,5 +278,13 @@ export const facilitiesApi = {
    */
   async generateQrCode(id: string, options?: GenerateQrCodeRequest): Promise<QrCodeResponse> {
     return apiClient.post<QrCodeResponse>(`/facilities/${id}/qr-code`, options || {});
+  },
+
+  /**
+   * Complete facility registration (Super Admin only)
+   * Creates tenant + facility + owner + subscription
+   */
+  async register(data: RegisterFacilityRequest): Promise<RegisterFacilityResponse> {
+    return apiClient.post<RegisterFacilityResponse>('/facilities/register', data);
   },
 };
